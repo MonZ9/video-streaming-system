@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>登录</title>
+</head>
+<body>
+
+<h2>登录</h2>
+
+用户名：
+<input id="username" type="text"><br><br>
+
+密码：
+<input id="password" type="password"><br><br>
+
+<button onclick="login()">登录</button>
+
+<script src="js/api.js"></script>
+
+<script>
+  function login() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+      alert("用户名或密码不能为空");
+      return;
+    }
+
+    request(`${BASE}/api/user/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`)
+            .then(data => {
+              alert(data.message);
+              if (data.success) {
+                // 登录成功跳转
+                window.location.href = "home.html";
+              }
+            })
+            .catch(() => alert("登录失败"));
+  }
+</script>
+
+</body>
+</html>

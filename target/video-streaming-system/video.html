@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>视频详情</title>
+
+  <style>
+    body { font-family: Arial; text-align: center; }
+    .container { width: 600px; margin: auto; }
+    video { width: 100%; border-radius: 10px; }
+    .comment-box { margin-top: 20px; text-align: left; }
+    textarea { width: 100%; height: 60px; padding: 5px; }
+    button { margin-top: 5px; padding: 6px 12px; cursor: pointer; }
+    .comment-item { border-top: 1px solid #eee; padding: 10px; position: relative; }
+    .comment-item button { position: absolute; right: 0; top: 10px; color: red; }
+
+    .author {
+      color: #666;
+      margin: 5px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body onload="initPage()">
+
+<div class="container">
+
+  <h2 id="title">加载中...</h2>
+
+  <!--新增作者 -->
+  <p id="author" class="author">作者：加载中...</p>
+
+  <video id="videoPlayer" controls>
+    您的浏览器不支持 video 标签
+  </video>
+
+  <p id="desc">加载中...</p>
+
+  <!-- 评论输入 -->
+  <div class="comment-box">
+    <h3>发表评论</h3>
+    <textarea id="comment_input"></textarea><br>
+    <button onclick="submitComment()">提交评论</button>
+  </div>
+
+  <!-- 评论列表 -->
+  <div class="comment-box">
+    <h3>评论列表</h3>
+    <div id="commentList">加载中...</div>
+  </div>
+
+</div>
+
+<script src="js/api.js"></script>
+
+<script>
+  let videoId = null;
+
+  function initPage() {
+    const params = new URLSearchParams(window.location.search);
+    videoId = params.get("id");
+
+    if (!videoId) {
+      alert("参数错误");
+      return;
+    }
+
+    //保证顺序：先用户 → 再数据
+    loadUser().then(() => {
+      loadVideoDetail();
+      loadComments(videoId);
+    });
+  }
+
+  function loadVideoDetail() {
+    request(`${BASE}/api/video/getAllVideos`)
+            .then(data => {
+
+              if (!data.success) {
+                alert("获取视频失败（未登录）");
+                window.location.href = "login.html";
+                return;
+              }
+
+              let video = data.data.find(v => v.id == videoId);
+
+              if (!video) {
+                alert("视频不存在");
+                return;
+              }
+
+              // 标题
+              document.getElementById("title").innerText = video.title;
+
+              // 作者
+              document.getElementById("author").innerText =
+                      "作者：" + (video.authorName || "未知用户");
+
+              // 描述
+              document.getElementById("desc").innerText =
+                      video.description || "无描述";
+
+              // 视频
+              document.getElementById("videoPlayer").src = video.url;
+            })
+            .catch(() => alert("获取视频失败"));
+  }
+</script>
+
+</body>
+</html>

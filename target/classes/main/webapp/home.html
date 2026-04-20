@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>视频列表</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+    }
+
+    #videoList {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin: 15px;
+      border-radius: 10px;
+      width: 400px;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .title {
+      cursor: pointer;
+      color: #333;
+    }
+
+    .title:hover {
+      color: blue;
+      text-decoration: underline;
+    }
+
+    #userInfo {
+      margin: 10px;
+      font-weight: bold;
+      color: green;
+    }
+
+    #uploadBox {
+      margin: 20px;
+      padding: 15px;
+      border: 1px dashed #aaa;
+      display: inline-block;
+    }
+
+    textarea {
+      width: 300px;
+      height: 80px;
+      resize: none;
+    }
+  </style>
+</head>
+
+<body onload="initPage()">
+
+<h2>视频列表</h2>
+
+<!-- 用户信息 -->
+<div id="userInfo">加载中...</div>
+
+<button onclick="getVideos()">刷新视频</button>
+<button onclick="logout()">退出登录</button>
+
+<!-- 上传视频 -->
+<div id="uploadBox">
+  <h3>上传视频</h3>
+
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="text" name="title" placeholder="视频标题" required><br><br>
+
+    <!--新增简介输入-->
+    <textarea name="description" placeholder="请输入视频简介"></textarea><br><br>
+
+    <input type="file" name="videoFile" required><br><br>
+    <button type="button" onclick="uploadVideo()">上传</button>
+  </form>
+</div>
+
+<div id="videoList"></div>
+
+<script src="js/api.js"></script>
+
+<script>
+  function initPage() {
+    loadUser();
+    getVideos(); // 调用 api.js 的随机3个逻辑
+  }
+
+  // ================= 用户信息 =================
+  function loadUser() {
+    request(`${BASE}/api/user/getUserInfo`)
+            .then(res => {
+              if (res.success && res.data) {
+                document.getElementById("userInfo").innerText =
+                        "欢迎你：" + res.data.username;
+              } else {
+                document.getElementById("userInfo").innerText = "未登录";
+                window.location.href = "login.html";
+              }
+            })
+            .catch(() => {
+              document.getElementById("userInfo").innerText = "加载用户失败";
+            });
+  }
+
+  // ================= 上传视频 =================
+  function uploadVideo() {
+    let form = document.getElementById("uploadForm");
+    let formData = new FormData(form);
+
+    if (!formData.get("title") || !formData.get("videoFile").name) {
+      alert("请填写完整信息");
+      return;
+    }
+
+    fetch(`${BASE}/api/video/upload`, {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    })
+            .then(res => res.json())
+            .then(res => {
+              alert(res.message);
+              if (res.success) {
+                form.reset();
+                getVideos(); // 刷新随机视频
+              }
+            })
+            .catch(() => alert("上传失败"));
+  }
+
+  // ================= 退出登录 =================
+  function logout() {
+    request(`${BASE}/api/user/logout`)
+            .then(res => {
+              alert(res.message);
+              window.location.href = "login.html";
+            })
+            .catch(() => alert("退出失败"));
+  }
+
+  // ================= 跳转详情页 =================
+  function goToVideo(id) {
+    window.location.href = `video.html?id=${id}`;
+  }
+
+  // ================= 删除视频 =================
+  function deleteVideoById(id) {
+    if (!confirm("确定删除这个视频吗？")) return;
+
+    request(`${BASE}/api/video/deleteVideo?id=${id}`)
+            .then(res => {
+              alert(res.message);
+              if (res.success) getVideos();
+            })
+            .catch(() => alert("删除失败"));
+  }
+</script>
+
+</body>
+</html>

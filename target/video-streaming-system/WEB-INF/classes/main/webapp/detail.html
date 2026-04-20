@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>视频详情</title>
+</head>
+<body>
+
+<h2>视频详情</h2>
+
+<div id="videoDetail"></div>
+
+<h3>发表评论</h3>
+
+视频ID：<input id="comment_videoId"><br>
+内容：<input id="comment_content"><br>
+
+<button onclick="addComment()">发表评论</button>
+
+<script src="js/api.js"></script>
+
+<script>
+  let id = new URLSearchParams(window.location.search).get("id");
+
+  // 自动填入评论视频ID
+  document.getElementById("comment_videoId").value = id;
+
+  // 获取视频信息
+  fetch(`${BASE}/api/video/getAllVideos`)
+          .then(res => res.json())
+          .then(data => {
+
+            let v = data.data.find(item => item.id == id);
+
+            document.getElementById("videoDetail").innerHTML = `
+            <h3>${v.title}</h3>
+            <video src="${v.url}" controls width="500"></video>
+            <p>${v.description}</p>
+        `;
+          });
+</script>
+
+</body>
+</html>
