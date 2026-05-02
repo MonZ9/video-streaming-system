@@ -118,7 +118,12 @@ public class UserController {
             result.put("message", "未登录");
         } else {
             result.put("success", true);
-            result.put("data", user);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", user.getId());
+            data.put("username", user.getUsername());
+            data.put("isAdmin", user.isAdmin());
+            result.put("data", data);
         }
 
         resp.getWriter().write(JSON.toJSONString(result));
