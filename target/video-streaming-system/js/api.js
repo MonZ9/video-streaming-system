@@ -47,6 +47,31 @@ function loadUser() {
         .catch(() => alert("获取用户失败"));
 }
 
+//=============注册==========
+function register() {
+    const username = document.getElementById("reg_username").value;
+    const password = document.getElementById("reg_password").value;
+    const isAdmin = document.getElementById("reg_admin").value;
+
+    if (!username || !password) {
+        alert("用户名或密码不能为空");
+        return;
+    }
+
+    request(`${BASE}/api/user/register?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&isAdmin=${isAdmin}`)
+        .then(data => {
+            alert(data.message);
+
+            if (data.success) {
+                // 注册成功跳转登录页
+                window.location.href = "login.html";
+            }
+        })
+        .catch(() => {
+            alert("注册失败");
+        });
+}
+
 // ================= 获取视频详情（用于拿作者ID） =================
 function loadVideoInfo(videoId) {
     return request(`${BASE}/api/video/getVideo?id=${videoId}`)
