@@ -28,7 +28,7 @@
 
   <h2 id="title">加载中...</h2>
 
-  <!--新增作者 -->
+  <!-- 作者 -->
   <p id="author" class="author">作者：加载中...</p>
 
   <video id="videoPlayer" controls>
@@ -37,14 +37,12 @@
 
   <p id="desc">加载中...</p>
 
-  <!-- 评论输入 -->
   <div class="comment-box">
     <h3>发表评论</h3>
     <textarea id="comment_input"></textarea><br>
     <button onclick="submitComment()">提交评论</button>
   </div>
 
-  <!-- 评论列表 -->
   <div class="comment-box">
     <h3>评论列表</h3>
     <div id="commentList">加载中...</div>
@@ -66,7 +64,6 @@
       return;
     }
 
-    //保证顺序：先用户 → 再数据
     loadUser().then(() => {
       loadVideoDetail();
       loadComments(videoId);
@@ -74,37 +71,38 @@
   }
 
   function loadVideoDetail() {
-    request(`${BASE}/api/video/getAllVideos`)
+    request(`${BASE}/api/video/getVideo?id=${videoId}`)
             .then(data => {
 
-              if (!data.success) {
-                alert("获取视频失败（未登录）");
-                window.location.href = "login.html";
+              if (!data.success || !data.data) {
+                alert(data.message || "视频不存在");
+
+                document.getElementById("title").innerText = "加载失败";
+                document.getElementById("desc").innerText = "";
+                document.getElementById("author").innerText = "";
                 return;
               }
 
-              let video = data.data.find(v => v.id == videoId);
+              let video = data.data;
 
-              if (!video) {
-                alert("视频不存在");
-                return;
-              }
+              CURRENT_VIDEO_USER_ID = video.userId;
 
-              // 标题
-              document.getElementById("title").innerText = video.title;
+              document.getElementById("title").innerText = video.title || "无标题";
 
-              // 作者
+              //核心修改：显示作者名（优先 authorName）
               document.getElementById("author").innerText =
-                      "作者：" + (video.authorName || "未知用户");
+                      "作者：" + (video.authorName || "未知作者");
 
-              // 描述
               document.getElementById("desc").innerText =
                       video.description || "无描述";
 
-              // 视频
-              document.getElementById("videoPlayer").src = video.url;
+              document.getElementById("videoPlayer").src =
+                      video.url || "";
             })
-            .catch(() => alert("获取视频失败"));
+            .catch(err => {
+              console.error("video load error:", err);
+              alert("网络或服务器异常");
+            });
   }
 </script>
 

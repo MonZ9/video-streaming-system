@@ -30,11 +30,25 @@
 
     request(`${BASE}/api/user/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`)
             .then(data => {
-              alert(data.message);
+
+              console.log("登录返回:", data);
+
               if (data.success) {
-                // 登录成功跳转
-                window.location.href = "home.html";
+
+                //  保存 token（如果你后端有返回）
+                if (data.token) {
+                  localStorage.setItem("token", data.token);
+                }
+
+                console.log("准备跳转...");
+
+                //  用绝对路径（关键）
+                window.location.href = "/video_streaming_system_war_exploded/home.html";
+
+              } else {
+                alert(data.message || "登录失败");
               }
+
             })
             .catch(() => alert("登录失败"));
   }

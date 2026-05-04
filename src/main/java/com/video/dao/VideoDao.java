@@ -49,7 +49,39 @@ public class VideoDao extends BaseDao<Video> {
 
     // ================= 查询单个视频 =================
     public Video findById(int id) {
-        return super.findById(id);
+
+        String sql =
+                "SELECT v.*, u.username AS authorName " +
+                        "FROM videos v " +
+                        "LEFT JOIN users u ON v.user_id = u.id " +
+                        "WHERE v.id = ?";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Video video = new Video();
+
+                video.setId(rs.getInt("id"));
+                video.setTitle(rs.getString("title"));
+                video.setUrl(rs.getString("url"));
+                video.setDescription(rs.getString("description"));
+                video.setUserId(rs.getInt("user_id"));
+
+                //关键
+                video.setAuthorName(rs.getString("authorName"));
+
+                return video;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     // ================= 查询所有视频 =================
@@ -111,4 +143,41 @@ public class VideoDao extends BaseDao<Video> {
 
         return false;
     }
+
+    public Video findByIdWithAuthor(int id) {
+
+        String sql =
+                "SELECT v.*, u.username AS authorName " +
+                        "FROM videos v " +
+                        "LEFT JOIN users u ON v.user_id = u.id " +
+                        "WHERE v.id = ?";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Video video = new Video();
+
+                video.setId(rs.getInt("id"));
+                video.setTitle(rs.getString("title"));
+                video.setUrl(rs.getString("url"));
+                video.setDescription(rs.getString("description"));
+                video.setUserId(rs.getInt("user_id"));
+
+                // ⭐关键
+                video.setAuthorName(rs.getString("authorName"));
+
+                return video;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
 }

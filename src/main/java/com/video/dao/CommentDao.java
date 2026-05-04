@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.model.Comment;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
 
@@ -74,42 +75,48 @@ public class CommentDao {
     }
 
     // ================= 删除评论=================
-    public boolean deleteComment(int commentId, int userId, boolean isAdmin) {
+    public boolean deleteComment(int commentId) {
 
-        LogUtil.info("删除评论 commentId=" + commentId + " userId=" + userId + " isAdmin=" + isAdmin);
-
-        String sql;
-
-        if (isAdmin) {
-            // 管理员：可以删除任何评论
-            sql = "DELETE FROM comments WHERE id = ?";
-        } else {
-            // 评论作者 或 视频作者
-            sql = "DELETE FROM comments WHERE id = ? AND (" +
-                    "user_id = ? OR video_id IN (" +
-                    "SELECT id FROM videos WHERE user_id = ?" +
-                    "))";
-        }
+        String sql = "DELETE FROM comments WHERE id = ?";
 
         try (Connection conn = DbUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, commentId);
 
-            if (!isAdmin) {
-                ps.setInt(2, userId); // 评论作者
-                ps.setInt(3, userId); // 视频作者
-            }
-
-            int result = ps.executeUpdate();
-
-            LogUtil.info("删除评论结果=" + result);
-            return result > 0;
+            return ps.executeUpdate() > 0;
 
         } catch (Exception e) {
-            LogUtil.error("删除评论失败", e);
+            e.printStackTrace();
         }
 
         return false;
+    }
+
+    public Comment findById(int id) {
+
+        String sql = "SELECT * FROM comments WHERE id = ?";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Comment c = new Comment();
+                c.setId(rs.getInt("id"));
+                c.setVideoId(rs.getInt("video_id"));
+                c.setUserId(rs.getInt("user_id"));
+                c.setContent(rs.getString("content"));
+                c.setCreatedAt(rs.getTimestamp("created_at"));
+                return c;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 }

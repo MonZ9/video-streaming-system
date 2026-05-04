@@ -4,6 +4,7 @@ import com.video.dao.UserDao;
 import com.video.dao.TokenDao;
 import com.video.model.User;
 import com.video.util.PasswordUtil;
+import com.video.util.RedisUtil;
 import com.video.util.TokenUtil;
 
 import java.util.UUID;
@@ -45,19 +46,16 @@ public class UserService {
 
         if (user != null) {
 
-            // 取出盐
+            //加盐
             String salt = user.getSalt();
-
-            // 用相同方式加密
             String hash = PasswordUtil.hash(password + salt);
 
-            // 比较
             if (hash.equals(user.getPasswordHash())) {
 
                 String token = TokenUtil.generateToken(username);
 
-                // 存入数据库
-                tokenDao.saveToken(user.getId(), token);
+                //存 Redis（30分钟过期）
+                RedisUtil.setex("token:" + token, 1800, String.valueOf(user.getId()));
 
                 return token;
             }
@@ -73,28 +71,47 @@ public class UserService {
 
     // ================= Token校验 =================
     public boolean validateToken(String token) {
-        return tokenDao.exists(token);
+        return RedisUtil.get("token:" + token) != null;
     }
 
     // ================= 根据Token获取用户ID =================
     public Integer getUserIdByToken(String token) {
-        return tokenDao.getUserIdByToken(token);
+
+        if (token == null || token.isEmpty()) {
+            return null;
+        }
+
+        String userIdStr = RedisUtil.get("token:" + token);
+
+        if (userIdStr == null) {
+            return null;
+        }
+
+        return Integer.parseInt(userIdStr);
     }
 
     // ================= 刷新Token =================
     public String refreshToken(String oldToken) {
 
-        Integer userId = tokenDao.getUserIdByToken(oldToken);
+        String val = RedisUtil.get("token:" + oldToken);
 
-        if (userId != null) {
-            String newToken = TokenUtil.generateToken("user_" + userId);
+        if (val != null) {
 
-            tokenDao.deleteToken(oldToken);
-            tokenDao.saveToken(userId, newToken);
+            String newToken = TokenUtil.generateToken("user_" + val);
+
+            RedisUtil.del("token:" + oldToken);
+            RedisUtil.setex("token:" + newToken, 1800, val);
 
             return newToken;
         }
 
         return null;
     }
+
+    // ================= 根据ID获取用户 =================
+    public User getUserById(int id) {
+        return userDao.findById(id);
+    }
+
+
 }

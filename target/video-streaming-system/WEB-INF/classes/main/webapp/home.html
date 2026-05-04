@@ -70,7 +70,6 @@
 
 <h2>视频列表</h2>
 
-<!-- 用户信息 -->
 <div id="userInfo">加载中...</div>
 
 <button onclick="getVideos()">刷新视频</button>
@@ -83,10 +82,11 @@
   <form id="uploadForm" enctype="multipart/form-data">
     <input type="text" name="title" placeholder="视频标题" required><br><br>
 
-    <!--新增简介输入-->
     <textarea name="description" placeholder="请输入视频简介"></textarea><br><br>
 
     <input type="file" name="videoFile" required><br><br>
+
+    <!-- ✅ 只保留调用，不写函数 -->
     <button type="button" onclick="uploadVideo()">上传</button>
   </form>
 </div>
@@ -98,7 +98,7 @@
 <script>
   function initPage() {
     loadUser();
-    getVideos(); // 调用 api.js 的随机3个逻辑
+    getVideos();
   }
 
   // ================= 用户信息 =================
@@ -118,30 +118,45 @@
             });
   }
 
-  // ================= 上传视频 =================
-  function uploadVideo() {
-    let form = document.getElementById("uploadForm");
-    let formData = new FormData(form);
+  // ================= 视频列表（统一走 api.js） =================
+  function getVideos() {
+    request(`${BASE}/api/video/getAllVideos`)
+            .then(data => {
 
-    if (!formData.get("title") || !formData.get("videoFile").name) {
-      alert("请填写完整信息");
-      return;
-    }
-
-    fetch(`${BASE}/api/video/upload`, {
-      method: "POST",
-      body: formData,
-      credentials: "include"
-    })
-            .then(res => res.json())
-            .then(res => {
-              alert(res.message);
-              if (res.success) {
-                form.reset();
-                getVideos(); // 刷新随机视频
+              if (!data.success) {
+                alert("请先登录！");
+                window.location.href = "login.html";
+                return;
               }
+
+              let list = data.data || [];
+
+              if (list.length === 0) {
+                document.getElementById("videoList").innerHTML = "<p>暂无视频</p>";
+                return;
+              }
+
+              list.sort(() => Math.random() - 0.5);
+              let showList = list.slice(0, 3);
+
+              let html = "";
+
+              showList.forEach(v => {
+
+                html += `
+            <div class="card">
+              <h3 onclick="goToVideo(${v.id})">${v.title}</h3>
+              <video src="${v.url}" controls></video>
+              <p>${v.description || "无描述"}</p>
+              <button onclick="goToVideo(${v.id})">查看详情</button>
+              <button onclick="deleteVideoById(${v.id})">删除</button>
+            </div>
+          `;
+              });
+
+              document.getElementById("videoList").innerHTML = html;
             })
-            .catch(() => alert("上传失败"));
+            .catch(() => alert("获取视频失败"));
   }
 
   // ================= 退出登录 =================
@@ -154,7 +169,7 @@
             .catch(() => alert("退出失败"));
   }
 
-  // ================= 跳转详情页 =================
+  // ================= 跳转详情 =================
   function goToVideo(id) {
     window.location.href = `video.html?id=${id}`;
   }
