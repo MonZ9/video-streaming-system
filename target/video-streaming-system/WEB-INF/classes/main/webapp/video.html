@@ -19,6 +19,12 @@
       margin: 5px 0;
       font-size: 14px;
     }
+
+    .comment-user {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 
@@ -28,7 +34,6 @@
 
   <h2 id="title">加载中...</h2>
 
-  <!-- 作者 -->
   <p id="author" class="author">作者：加载中...</p>
 
   <video id="videoPlayer" controls>
@@ -89,7 +94,6 @@
 
               document.getElementById("title").innerText = video.title || "无标题";
 
-              //核心修改：显示作者名（优先 authorName）
               document.getElementById("author").innerText =
                       "作者：" + (video.authorName || "未知作者");
 
@@ -104,6 +108,64 @@
               alert("网络或服务器异常");
             });
   }
+
+  // ================= 加载评论（最终版） =================
+  function loadComments(videoId) {
+
+    request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}`)
+            .then(res => {
+
+              let listDiv = document.getElementById("commentList");
+              listDiv.innerHTML = "";
+
+              if (!res.success || !res.data || res.data.length === 0) {
+                listDiv.innerHTML = "暂无评论";
+                return;
+              }
+
+              res.data.forEach(comment => {
+
+                let html = `
+                  <div class="comment-item">
+                    <div class="comment-user">
+                      ${comment.username || ("用户" + comment.userId)}
+                    </div>
+                    <p>${comment.content}</p>
+                `;
+
+                // ⭐ RBAC 删除按钮
+                if (comment.canDelete) {
+                  html += `<button onclick="deleteComment(${comment.id})">删除</button>`;
+                }
+
+                html += `</div>`;
+
+                listDiv.innerHTML += html;
+              });
+
+            })
+            .catch(err => {
+              console.error("comment load error:", err);
+              alert("评论加载失败");
+            });
+  }
+
+  // ================= 删除评论 =================
+  function deleteComment(id) {
+
+    if (!confirm("确定删除吗？")) return;
+
+    request(`${BASE}/api/comment/deleteComment?id=${id}`)
+            .then(res => {
+              alert(res.message || "操作完成");
+
+              if (res.success) {
+                loadComments(videoId);
+              }
+            })
+            .catch(() => alert("删除失败"));
+  }
+
 </script>
 
 </body>

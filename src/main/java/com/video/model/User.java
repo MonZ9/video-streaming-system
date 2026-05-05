@@ -9,6 +9,7 @@ public class User {
     private int id;
     private String username;
     private String passwordHash;
+    private int roleId;
 
     //盐
     private String salt;
@@ -66,4 +67,14 @@ public class User {
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
     }
+
+    public int getRoleId() {
+        return roleId;
+    }
+
+    public void setRoleId(int roleId) {
+        this.roleId = roleId;
+    }
+
+
 }

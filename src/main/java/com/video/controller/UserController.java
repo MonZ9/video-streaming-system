@@ -119,6 +119,8 @@ public class UserController {
             data.put("id", user.getId());
             data.put("username", user.getUsername());
             data.put("isAdmin", user.isAdmin());
+            int roleId = userService.getPrimaryRoleId(user.getId());
+            data.put("roleId", roleId);
 
             result.put("success", true);
             result.put("data", data);

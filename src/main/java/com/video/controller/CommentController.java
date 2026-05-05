@@ -94,7 +94,12 @@ public class CommentController {
 
             int videoId = Integer.parseInt(videoIdStr);
 
-            List<Map<String, Object>> comments = commentService.getCommentsByVideoId(videoId);
+            // ⭐ 获取当前用户（关键）
+            User user = getLoginUser(req);
+
+            // ⭐ 传入 user
+            List<Map<String, Object>> comments =
+                    commentService.getCommentsByVideoId(videoId, user);
 
             result.put("success", true);
             result.put("data", comments);

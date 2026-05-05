@@ -7,6 +7,7 @@ import com.video.service.UserService;
 import com.video.service.VideoService;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
+import com.video.util.PermissionUtil;
 
 import javax.servlet.http.*;
 import java.io.File;
@@ -143,7 +144,12 @@ public class VideoController {
             return;
         }
 
-        if (video.getUserId() != user.getId() && !user.isAdmin()) {
+        // ⭐ 核心：RBAC + 业务权限
+        boolean canDelete =
+                PermissionUtil.hasPermission(user, "video:delete")   // RBAC：管理员
+                        || video.getUserId() == user.getId();                 // 业务：作者
+
+        if (!canDelete) {
             result.put("success", false);
             result.put("message", "无权限");
             resp.getWriter().write(JSON.toJSONString(result));

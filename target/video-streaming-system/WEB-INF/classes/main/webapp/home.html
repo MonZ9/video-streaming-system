@@ -72,6 +72,9 @@
 
 <div id="userInfo">加载中...</div>
 
+<!-- ⭐ 新增管理员申请按钮 -->
+<button onclick="applyAdmin()">申请成为管理员</button>
+<button id="adminBtn" onclick="goAdmin()" style="display:none;">管理员审批</button>
 <button onclick="getVideos()">刷新视频</button>
 <button onclick="logout()">退出登录</button>
 
@@ -106,8 +109,33 @@
     request(`${BASE}/api/user/getUserInfo`)
             .then(res => {
               if (res.success && res.data) {
+
+                const roleId = res.data.roleId;
+
+                // ================= 用户信息 =================
                 document.getElementById("userInfo").innerText =
                         "欢迎你：" + res.data.username;
+
+                // ================= 全局状态 =================
+                CURRENT_USER_ID = res.data.id;
+                CURRENT_ROLE_ID = roleId;
+
+                console.log("roleId:", roleId);
+
+                // ================= RBAC UI控制 =================
+
+                // 申请管理员按钮（普通用户可见）
+                const applyBtn = document.querySelector("button[onclick='applyAdmin()']");
+                if (applyBtn) {
+                  applyBtn.style.display = (roleId === 1) ? "none" : "inline-block";
+                }
+
+                // 管理员审批按钮（只有管理员可见）
+                const adminBtn = document.getElementById("adminBtn");
+                if (adminBtn) {
+                  adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+                }
+
               } else {
                 document.getElementById("userInfo").innerText = "未登录";
                 window.location.href = "login.html";

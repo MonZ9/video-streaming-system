@@ -30,19 +30,36 @@ function loadUser() {
         .then(res => {
 
             if (res.success) {
+
                 CURRENT_USER_ID = res.data.id;
                 CURRENT_IS_ADMIN = res.data.isAdmin;
 
                 console.log("当前用户ID:", CURRENT_USER_ID);
                 console.log("是否管理员:", CURRENT_IS_ADMIN);
+                console.log("user接口返回：", res);
+
+                // ⭐ 新增：控制管理员按钮显示
+                const adminBtn = document.getElementById("adminBtn");
+
+                if (adminBtn) {
+                    if (res.data.isAdmin === true) {
+                        adminBtn.style.display = "inline-block";
+                    } else {
+                        adminBtn.style.display = "none";
+                    }
+                }
 
             } else {
+
                 alert(res.message || "请先登录");
+
                 localStorage.removeItem("token");
                 window.location.href = "login.html";
             }
+
         })
         .catch(err => {
+
             console.error("获取用户失败:", err);
             alert("网络异常，无法获取用户信息");
         });
@@ -83,14 +100,13 @@ function register() {
 
     const username = document.getElementById("reg_username").value;
     const password = document.getElementById("reg_password").value;
-    const isAdmin = document.getElementById("reg_admin").value;
 
     if (!username || !password) {
         alert("用户名或密码不能为空");
         return;
     }
 
-    request(`${BASE}/api/user/register?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&isAdmin=${isAdmin}`)
+    request(`${BASE}/api/user/register?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`)
         .then(res => {
 
             alert(res.message || "操作完成");
@@ -113,7 +129,7 @@ function getVideos() {
 
             console.log("视频接口返回：", data);
 
-            // ❗ 仅在“明确未登录/过期”时跳转
+            //仅在“明确未登录/过期”时跳转
             if (data.success === false &&
                 (data.message === "未登录" || data.message === "登录已过期")) {
 
@@ -123,7 +139,7 @@ function getVideos() {
                 return;
             }
 
-            // ❗ 其他错误不跳转
+            //其他错误不跳转
             if (!data.success) {
                 alert(data.message || "获取视频失败");
                 return;
@@ -325,4 +341,40 @@ function logout() {
         .catch(() => {
             window.location.href = "login.html";
         });
+}
+
+// ================= 申请管理员 =================
+function applyAdmin() {
+
+    if (!CURRENT_USER_ID) {
+        alert("请先登录");
+        return;
+    }
+
+    request(`${BASE}/api/admin/apply`)
+        .then(res => {
+            alert(res.message || "操作完成");
+        })
+        .catch(err => {
+            console.error("申请失败:", err);
+            alert("申请失败");
+        });
+}
+//======管理员审批======
+function goAdmin() {
+    window.location.href = "admin.html";
+}
+
+function updateUIByRole(roleId) {
+
+    const adminBtn = document.getElementById("adminBtn");
+    const applyBtn = document.querySelector("button[onclick='applyAdmin()']");
+
+    if (adminBtn) {
+        adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+    }
+
+    if (applyBtn) {
+        applyBtn.style.display = (roleId === 0) ? "inline-block" : "none";
+    }
 }

@@ -8,6 +8,7 @@ import com.video.model.User;
 import com.video.model.Video;
 import com.video.util.LogUtil;
 import com.video.util.RedisUtil;
+import com.video.util.PermissionUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,56 +24,62 @@ public class CommentService {
         boolean success = commentDao.addComment(videoId, userId, content);
 
         if (success) {
-            // 删除该视频评论缓存（关键）
             String key = "comment:video:" + videoId;
             RedisUtil.del(key);
-
             LogUtil.info("新增评论，清除缓存 videoId=" + videoId);
         }
 
         return success;
     }
 
-    // ================= 查询评论（Redis缓存 + 防穿透） =================
+    // ================= 查询评论（带权限 canDelete） =================
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> getCommentsByVideoId(int videoId) {
+    public List<Map<String, Object>> getCommentsByVideoId(int videoId, User user) {
 
         String key = "comment:video:" + videoId;
 
-        //查 Redis
+        List<Map<String, Object>> list;
+
         String json = RedisUtil.get(key);
 
         if (json != null) {
 
-            // 防穿透：空缓存
             if ("EMPTY".equals(json)) {
-                LogUtil.info("命中空缓存 videoId=" + videoId);
                 return new ArrayList<>();
             }
 
-            LogUtil.info("从Redis获取评论 videoId=" + videoId);
+            list = (List<Map<String, Object>>) (List<?>) JSON.parseArray(json, Map.class);
 
-            //关键修复点：类型强转
-            return (List<Map<String, Object>>) (List<?>) JSON.parseArray(json, Map.class);
+        } else {
+
+            list = commentDao.getCommentsByVideoId(videoId);
+
+            if (list == null || list.isEmpty()) {
+                RedisUtil.setex(key, 60, "EMPTY");
+                return new ArrayList<>();
+            }
+
+            RedisUtil.setex(key, 300, JSON.toJSONString(list));
         }
 
-        //查数据库
-        List<Map<String, Object>> list = commentDao.getCommentsByVideoId(videoId);
+        // ⭐ 计算 canDelete
+        Video video = new VideoDao().findById(videoId);
+        int videoOwnerId = (video == null) ? -1 : video.getUserId();
 
-        //写入缓存
-        if (list == null || list.isEmpty()) {
+        for (Map<String, Object> map : list) {
 
-            // 防穿透（短缓存）
-            RedisUtil.setex(key, 60, "EMPTY");
+            int commentUserId = (int) map.get("userId");
 
-            LogUtil.warn("评论为空，写入空缓存 videoId=" + videoId);
-            return new ArrayList<>();
+            boolean isCommentOwner = user != null && commentUserId == user.getId();
+            boolean isVideoOwner = user != null && videoOwnerId == user.getId();
+
+            boolean hasPermission = user != null &&
+                    PermissionUtil.hasPermission(user, "comment:delete");
+
+            boolean canDelete = isCommentOwner || isVideoOwner || hasPermission;
+
+            map.put("canDelete", canDelete);
         }
-
-        // 正常缓存
-        RedisUtil.setex(key, 300, JSON.toJSONString(list));
-
-        LogUtil.info("评论写入Redis缓存 videoId=" + videoId);
 
         return list;
     }
@@ -88,17 +95,13 @@ public class CommentService {
 
         Video video = new VideoDao().findById(comment.getVideoId());
 
-        // 🔥 debug日志（定位权限问题）
-        LogUtil.info("comment.userId=" + comment.getUserId());
-        LogUtil.info("video.userId=" + (video == null ? null : video.getUserId()));
-        LogUtil.info("login.userId=" + user.getId());
-        LogUtil.info("isAdmin=" + user.isAdmin());
-
         boolean isCommentOwner = comment.getUserId() == user.getId();
-        boolean isAdmin = user.isAdmin();
         boolean isVideoOwner = video != null && video.getUserId() == user.getId();
 
-        if (!isCommentOwner && !isAdmin && !isVideoOwner) {
+        // ⭐ 用 RBAC 判断
+        boolean hasPermission = PermissionUtil.hasPermission(user, "comment:delete");
+
+        if (!isCommentOwner && !isVideoOwner && !hasPermission) {
             return false;
         }
 

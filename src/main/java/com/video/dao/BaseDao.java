@@ -7,7 +7,9 @@ import com.video.util.LogUtil;
 import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class BaseDao<T> {
 
@@ -22,7 +24,7 @@ public class BaseDao<T> {
         return camelCase.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
-    // ================= 获取表名（核心改造） =================
+    // ================= 获取表名 =================
     private String getTableName() {
         if (type.isAnnotationPresent(TableName.class)) {
             return type.getAnnotation(TableName.class).value();
@@ -30,12 +32,20 @@ public class BaseDao<T> {
         return toSnakeCase(type.getSimpleName());
     }
 
-    // ================= 保存 =================
+    // ================= 保存（已修复字段污染问题） =================
     public boolean save(T entity) {
+
         String tableName = getTableName();
         LogUtil.info("BaseDao.save 表=" + tableName);
 
         try (Connection conn = DbUtil.getConnection()) {
+
+            // ================= 核心修复：字段白名单 =================
+            Set<String> ignoreFields = new HashSet<>();
+            ignoreFields.add("roleId");   // ❌ 关键：避免误插 user_roles
+            ignoreFields.add("roles");    // ❌ 如果你以后加 List<Role>
+            ignoreFields.add("permissions");
+
             Field[] fields = type.getDeclaredFields();
 
             StringBuilder fieldNames = new StringBuilder();
@@ -43,17 +53,26 @@ public class BaseDao<T> {
             List<Object> values = new ArrayList<>();
 
             for (Field field : fields) {
-                if ("id".equalsIgnoreCase(field.getName())) continue;
+
+                String fieldName = field.getName();
+
+                // ❌ 跳过 id
+                if ("id".equalsIgnoreCase(fieldName)) {
+                    continue;
+                }
+
+                // ❌ 跳过非表字段
+                if (ignoreFields.contains(fieldName)) {
+                    continue;
+                }
 
                 field.setAccessible(true);
                 Object value = field.get(entity);
 
-                if (value != null) {
-                    fieldNames.append(toSnakeCase(field.getName())).append(",");
-                    placeholders.append("?,");
+                fieldNames.append(toSnakeCase(fieldName)).append(",");
+                placeholders.append("?,");
 
-                    values.add(value);
-                }
+                values.add(value);
             }
 
             if (values.isEmpty()) {
@@ -67,7 +86,10 @@ public class BaseDao<T> {
             String sql = "INSERT INTO " + tableName +
                     " (" + fieldsStr + ") VALUES (" + placeholdersStr + ")";
 
-            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            LogUtil.info("SQL => " + sql);
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
                 for (int i = 0; i < values.size(); i++) {
                     ps.setObject(i + 1, values.get(i));
@@ -76,17 +98,17 @@ public class BaseDao<T> {
                 int rows = ps.executeUpdate();
                 LogUtil.info("BaseDao.save 影响行数=" + rows);
 
-                if (rows > 0) {
-                    ResultSet rs = ps.getGeneratedKeys();
+                if (rows <= 0) return false;
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
                     if (rs.next()) {
-                        try {
-                            Field idField = type.getDeclaredField("id");
-                            idField.setAccessible(true);
-                            idField.set(entity, rs.getInt(1));
-                        } catch (NoSuchFieldException ignored) {}
+                        Field idField = type.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(entity, rs.getInt(1));
                     }
-                    return true;
                 }
+
+                return true;
             }
 
         } catch (Exception e) {
@@ -98,37 +120,39 @@ public class BaseDao<T> {
 
     // ================= 查询ID =================
     public T findById(int id) {
+
         String tableName = getTableName();
-        LogUtil.info("BaseDao.findById 表=" + tableName + " id=" + id);
 
         try (Connection conn = DbUtil.getConnection()) {
+
             String sql = "SELECT * FROM " + tableName + " WHERE id=?";
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
                 ps.setInt(1, id);
+
                 ResultSet rs = ps.executeQuery();
 
                 if (rs.next()) {
+
                     T entity = type.getDeclaredConstructor().newInstance();
 
                     for (Field field : type.getDeclaredFields()) {
                         field.setAccessible(true);
-                        String columnName = toSnakeCase(field.getName());
+
+                        String column = toSnakeCase(field.getName());
 
                         try {
-                            Object value = rs.getObject(columnName);
-                            field.set(entity, value);
+                            field.set(entity, rs.getObject(column));
                         } catch (SQLException ignored) {}
                     }
 
                     return entity;
-                } else {
-                    LogUtil.warn("BaseDao.findById 未找到数据 id=" + id);
                 }
             }
 
         } catch (Exception e) {
-            LogUtil.error("BaseDao.findById 异常 id=" + id, e);
+            LogUtil.error("BaseDao.findById 异常", e);
         }
 
         return null;
@@ -136,33 +160,33 @@ public class BaseDao<T> {
 
     // ================= 查询全部 =================
     public List<T> findAll() {
-        String tableName = getTableName();
-        LogUtil.info("BaseDao.findAll 表=" + tableName);
 
+        String tableName = getTableName();
         List<T> list = new ArrayList<>();
 
         try (Connection conn = DbUtil.getConnection()) {
+
             String sql = "SELECT * FROM " + tableName;
 
             try (PreparedStatement ps = conn.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
+
                     T entity = type.getDeclaredConstructor().newInstance();
 
                     for (Field field : type.getDeclaredFields()) {
                         field.setAccessible(true);
-                        String columnName = toSnakeCase(field.getName());
+
+                        String column = toSnakeCase(field.getName());
+
                         try {
-                            Object value = rs.getObject(columnName);
-                            field.set(entity, value);
+                            field.set(entity, rs.getObject(column));
                         } catch (SQLException ignored) {}
                     }
 
                     list.add(entity);
                 }
-
-                LogUtil.info("BaseDao.findAll 查询结果数量=" + list.size());
             }
 
         } catch (Exception e) {
@@ -174,17 +198,19 @@ public class BaseDao<T> {
 
     // ================= 更新 =================
     public boolean update(T entity) {
+
         String tableName = getTableName();
-        LogUtil.info("BaseDao.update 表=" + tableName);
 
         try (Connection conn = DbUtil.getConnection()) {
+
             Field[] fields = type.getDeclaredFields();
 
-            StringBuilder setClause = new StringBuilder();
+            StringBuilder set = new StringBuilder();
             List<Object> values = new ArrayList<>();
             Integer id = null;
 
             for (Field field : fields) {
+
                 field.setAccessible(true);
                 Object value = field.get(entity);
 
@@ -193,28 +219,17 @@ public class BaseDao<T> {
                     continue;
                 }
 
-                //  核心：跳过 null
                 if (value == null) continue;
 
-                setClause.append(toSnakeCase(field.getName())).append("=?,");
-
+                set.append(toSnakeCase(field.getName())).append("=?,");
                 values.add(value);
             }
 
-            if (id == null) {
-                LogUtil.warn("BaseDao.update id=null");
-                return false;
-            }
+            if (id == null || values.isEmpty()) return false;
 
-            // 如果没有字段需要更新
-            if (values.isEmpty()) {
-                LogUtil.warn("BaseDao.update 没有需要更新的字段");
-                return false;
-            }
+            String setSql = set.substring(0, set.length() - 1);
 
-            String setStr = setClause.substring(0, setClause.length() - 1);
-
-            String sql = "UPDATE " + tableName + " SET " + setStr + " WHERE id=?";
+            String sql = "UPDATE " + tableName + " SET " + setSql + " WHERE id=?";
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -224,10 +239,7 @@ public class BaseDao<T> {
 
                 ps.setInt(values.size() + 1, id);
 
-                int result = ps.executeUpdate();
-                LogUtil.info("BaseDao.update 影响行数=" + result);
-
-                return result > 0;
+                return ps.executeUpdate() > 0;
             }
 
         } catch (Exception e) {
@@ -239,20 +251,20 @@ public class BaseDao<T> {
 
     // ================= 删除 =================
     public boolean delete(int id) {
+
         String tableName = getTableName();
-        LogUtil.info("BaseDao.delete 表=" + tableName + " id=" + id);
 
         try (Connection conn = DbUtil.getConnection()) {
+
             String sql = "DELETE FROM " + tableName + " WHERE id=?";
+
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, id);
-                int result = ps.executeUpdate();
-                LogUtil.info("BaseDao.delete 影响行数=" + result);
-                return result > 0;
+                return ps.executeUpdate() > 0;
             }
 
         } catch (Exception e) {
-            LogUtil.error("BaseDao.delete 异常 id=" + id, e);
+            LogUtil.error("BaseDao.delete 异常", e);
         }
 
         return false;

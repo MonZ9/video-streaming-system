@@ -2,11 +2,15 @@ package com.video.service;
 
 import com.video.dao.UserDao;
 import com.video.dao.TokenDao;
+import com.video.dao.UserRoleDao;
 import com.video.model.User;
-import com.video.util.PasswordUtil;
-import com.video.util.RedisUtil;
-import com.video.util.TokenUtil;
+import com.video.util.*;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class UserService {
@@ -15,28 +19,58 @@ public class UserService {
     private TokenDao tokenDao = new TokenDao();
 
     // ================= 注册（已升级：加盐） =================
+    private UserRoleDao userRoleDao = new UserRoleDao();
+
     public boolean register(String username, String password, boolean isAdmin) {
 
-        //判断用户是否存在
-        if (userDao.findByUsername(username) != null) {
+        // ================= 0. 基础校验 =================
+        if (username == null || username.trim().isEmpty()) {
             return false;
         }
 
+        username = username.trim();
+
+        // ================= 1. 查重（关键优化点） =================
+        User exist = userDao.findByUsername(username);
+
+        if (exist != null && exist.getId() > 0) {
+            LogUtil.warn("注册失败：用户名已存在 -> " + username);
+            return false;
+        }
+
+        // ================= 2. 创建用户 =================
         User user = new User();
         user.setUsername(username);
 
-        // 生成随机盐
-        String salt = UUID.randomUUID().toString();
+        // 统一 RBAC，不再使用 isAdmin 字段控制权限
+        user.setAdmin(false);
 
-        // 加盐哈希
+        // ================= 3. 加盐密码 =================
+        String salt = UUID.randomUUID().toString();
         String hash = PasswordUtil.hash(password + salt);
 
-        // 存入数据库
-        user.setPasswordHash(hash);
         user.setSalt(salt);
-        user.setAdmin(isAdmin);
+        user.setPasswordHash(hash);
 
-        return userDao.saveUser(user);
+        // ================= 4. 保存用户 =================
+        boolean success = userDao.saveUser(user);
+
+        if (!success) {
+            LogUtil.error("用户插入失败 -> " + username, null);
+            return false;
+        }
+
+        // ================= 5. 绑定角色（普通用户） =================
+        boolean roleOk = userRoleDao.addUserRole(user.getId(), 2);
+
+        if (!roleOk) {
+            LogUtil.error("角色绑定失败 userId=" + user.getId(), null);
+            return false;
+        }
+
+        LogUtil.info("注册成功 -> " + username + " userId=" + user.getId());
+
+        return true;
     }
 
     // ================= 登录（已升级：验证盐） =================
@@ -113,5 +147,72 @@ public class UserService {
         return userDao.findById(id);
     }
 
+    public List<String> getUserPermissions(int userId) {
+
+        String sql =
+                "SELECT p.name " +
+                        "FROM permissions p " +
+                        "JOIN role_permissions rp ON p.id = rp.permission_id " +
+                        "JOIN user_roles ur ON ur.role_id = rp.role_id " +
+                        "WHERE ur.user_id = ?";
+
+        List<String> list = new ArrayList<>();
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                list.add(rs.getString("name"));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public int getPrimaryRoleId(int userId) {
+
+        String sql = "SELECT role_id FROM user_roles WHERE user_id = ? LIMIT 1";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("role_id");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 2; // 默认普通用户
+    }
+
+    public boolean hasRole(int userId, int roleId) {
+        String sql = "SELECT 1 FROM user_roles WHERE user_id=? AND role_id=?";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+            ps.setInt(2, roleId);
+
+            ResultSet rs = ps.executeQuery();
+            return rs.next();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
 }
