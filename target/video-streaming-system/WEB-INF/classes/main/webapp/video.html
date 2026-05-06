@@ -12,19 +12,11 @@
     textarea { width: 100%; height: 60px; padding: 5px; }
     button { margin-top: 5px; padding: 6px 12px; cursor: pointer; }
     .comment-item { border-top: 1px solid #eee; padding: 10px; position: relative; }
-    .comment-item button { position: absolute; right: 0; top: 10px; color: red; }
-
-    .author {
-      color: #666;
-      margin: 5px 0;
-      font-size: 14px;
-    }
-
-    .comment-user {
-      color: #666;
-      font-size: 13px;
-      margin-bottom: 5px;
-    }
+    .comment-item button { margin-left: 5px; }
+    .author { color: #666; margin: 5px 0; font-size: 14px; }
+    .comment-user { color: #666; font-size: 13px; margin-bottom: 5px; }
+    .sort-box { margin-bottom: 10px; }
+    .like-count { color: #ff5555; margin-right: 10px; }
   </style>
 </head>
 
@@ -42,6 +34,12 @@
 
   <p id="desc">加载中...</p>
 
+  <!-- 点赞按钮 -->
+  <div style="margin: 10px 0;">
+    <button id="likeBtn" onclick="toggleLikeVideo()">👍 点赞</button>
+    <span id="videoLikeCount">0</span>
+  </div>
+<!--发表评论-->
   <div class="comment-box">
     <h3>发表评论</h3>
     <textarea id="comment_input"></textarea><br>
@@ -50,6 +48,13 @@
 
   <div class="comment-box">
     <h3>评论列表</h3>
+
+    <!-- 排序切换 -->
+    <div class="sort-box">
+      <label><input type="radio" name="sort" value="time" checked onchange="loadComments(videoId)"> 时间</label>
+      <label><input type="radio" name="sort" value="hot" onchange="loadComments(videoId)"> 热度</label>
+    </div>
+
     <div id="commentList">加载中...</div>
   </div>
 
@@ -59,6 +64,7 @@
 
 <script>
   let videoId = null;
+  let VIDEO_LIKED = false;  // 用来记录当前用户是否已经点赞
 
   function initPage() {
     const params = new URLSearchParams(window.location.search);
@@ -81,7 +87,6 @@
 
               if (!data.success || !data.data) {
                 alert(data.message || "视频不存在");
-
                 document.getElementById("title").innerText = "加载失败";
                 document.getElementById("desc").innerText = "";
                 document.getElementById("author").innerText = "";
@@ -89,19 +94,21 @@
               }
 
               let video = data.data;
-
               CURRENT_VIDEO_USER_ID = video.userId;
 
               document.getElementById("title").innerText = video.title || "无标题";
+              document.getElementById("author").innerText = "作者：" + (video.authorName || "未知作者");
+              document.getElementById("desc").innerText = video.description || "无描述";
+              document.getElementById("videoPlayer").src = video.url || "";
 
-              document.getElementById("author").innerText =
-                      "作者：" + (video.authorName || "未知作者");
+              // ===== 点赞数 =====
+              document.getElementById("videoLikeCount").innerText = video.likeCount || 0;
 
-              document.getElementById("desc").innerText =
-                      video.description || "无描述";
+              // 初始化点赞按钮文字
+              // ⭐⭐⭐ 关键：初始化点赞状态（推荐）
+              VIDEO_LIKED = video.liked || false;
 
-              document.getElementById("videoPlayer").src =
-                      video.url || "";
+              updateLikeBtn(); // 刷新按钮
             })
             .catch(err => {
               console.error("video load error:", err);
@@ -111,8 +118,9 @@
 
   // ================= 加载评论（最终版） =================
   function loadComments(videoId) {
+    const sort = document.querySelector('input[name="sort"]:checked')?.value || 'time';
 
-    request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}`)
+    request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}&sort=${sort}`)
             .then(res => {
 
               let listDiv = document.getElementById("commentList");
@@ -124,22 +132,35 @@
               }
 
               res.data.forEach(comment => {
+                let createdAt = comment.createdAt
+                        ? new Date(comment.createdAt).toLocaleString()
+                        : "";
 
                 let html = `
-                  <div class="comment-item">
-                    <div class="comment-user">
-                      ${comment.username || ("用户" + comment.userId)}
-                    </div>
-                    <p>${comment.content}</p>
-                `;
+            <div class="comment-item">
+              <div class="comment-user">
+                ${comment.username || ("用户" + comment.userId)}
+                <span style="color:#999;font-size:12px;margin-left:10px;">${createdAt}</span>
+              </div>
+              <p>${comment.content}</p>
 
-                // ⭐ RBAC 删除按钮
+              <div>
+            <span class="like-count" data-id="${comment.id}">
+              👍 ${comment.likeCount || 0}
+            </span>
+
+            <button
+              data-id="${comment.id}"
+              onclick="likeComment(${comment.id})">
+              ${comment.liked ? "取消点赞" : "点赞"}
+            </button>
+        `;
+
                 if (comment.canDelete) {
-                  html += `<button onclick="deleteComment(${comment.id})">删除</button>`;
+                  html += `<button onclick="deleteComment(${comment.id})" style="color:red;">删除</button>`;
                 }
 
-                html += `</div>`;
-
+                html += `</div></div>`;
                 listDiv.innerHTML += html;
               });
 
@@ -150,20 +171,69 @@
             });
   }
 
+  // ================= 点赞/取消评论 =================
+  function likeComment(commentId) {
+    request(`${BASE}/api/like/toggleCommentLike?commentId=${commentId}`)
+            .then(res => {
+              if (!res.success) {
+                alert(res.message || "操作失败");
+                return;
+              }
+
+              const btn = document.querySelector(`button[data-id="${commentId}"]`);
+              const countSpan = document.querySelector(`.like-count[data-id="${commentId}"]`);
+
+              if (btn && countSpan) {
+                countSpan.innerText = "👍 " + res.likeCount;
+                btn.innerText = res.liked ? "取消点赞" : "点赞";
+              }
+            })
+            .catch(() => alert("操作失败"));
+  }
+
   // ================= 删除评论 =================
   function deleteComment(id) {
-
     if (!confirm("确定删除吗？")) return;
 
     request(`${BASE}/api/comment/deleteComment?id=${id}`)
             .then(res => {
               alert(res.message || "操作完成");
-
               if (res.success) {
                 loadComments(videoId);
               }
             })
             .catch(() => alert("删除失败"));
+  }
+
+  // ================= 视频点赞/取消 =================
+  function toggleLikeVideo() {
+
+    request(`${BASE}/api/like/toggleVideoLike?videoId=${videoId}`)
+            .then(res => {
+
+              if (!res.success) {
+                alert(res.message || "操作失败");
+                return;
+              }
+
+              // ⭐ 用后端返回的数据（最稳）
+              VIDEO_LIKED = res.liked;
+              document.getElementById("videoLikeCount").innerText = res.likeCount;
+
+              updateLikeBtn(); // 刷新按钮状态
+            })
+            .catch(() => alert("操作失败"));
+  }
+
+  //=======按钮刷新函数=======
+  function updateLikeBtn() {
+    const btn = document.getElementById("likeBtn");
+
+    if (VIDEO_LIKED) {
+      btn.innerText = "❤️ 已点赞（点击取消）";
+    } else {
+      btn.innerText = "👍 点赞";
+    }
   }
 
 </script>

@@ -75,7 +75,7 @@ public class CommentController {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    // ================= 获取评论 =================
+    // ================= 获取评论（支持排序） =================
     public void getCommentsByVideoId(HttpServletRequest req, HttpServletResponse resp) throws Exception {
 
         resp.setContentType("application/json;charset=UTF-8");
@@ -84,6 +84,7 @@ public class CommentController {
 
         try {
             String videoIdStr = req.getParameter("videoId");
+            String sort = req.getParameter("sort"); // ⭐ 新增
 
             if (videoIdStr == null) {
                 result.put("success", false);
@@ -94,12 +95,16 @@ public class CommentController {
 
             int videoId = Integer.parseInt(videoIdStr);
 
-            // ⭐ 获取当前用户（关键）
             User user = getLoginUser(req);
 
-            // ⭐ 传入 user
-            List<Map<String, Object>> comments =
-                    commentService.getCommentsByVideoId(videoId, user);
+            List<Map<String, Object>> comments;
+
+            // ⭐ 核心切换逻辑（你刚问的插入位置就在这里）
+            if ("hot".equals(sort)) {
+                comments = commentService.getHotCommentsByVideoId(videoId,user);
+            } else {
+                comments = commentService.getCommentsByVideoId(videoId, user);
+            }
 
             result.put("success", true);
             result.put("data", comments);

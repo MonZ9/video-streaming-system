@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>管理员审批</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 60%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        th {
+            background-color: #f5f5f5;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        #backBtn {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body onload="initPage()">
+
+<h2>管理员审批中心</h2>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>用户名</th>
+        <th>操作</th>
+    </tr>
+    </thead>
+
+    <tbody id="requestList">
+    <tr><td colspan="3">加载中...</td></tr>
+    </tbody>
+</table>
+
+<button id="backBtn" onclick="goBack()">返回首页</button>
+
+<script src="js/api.js"></script>
+
+<script>
+
+    function initPage() {
+        loadRequests();
+    }
+
+    // ================= 获取申请列表 =================
+    function loadRequests() {
+
+        request(`${BASE}/api/admin/getlist`)
+            .then(res => {
+
+                let tbody = document.getElementById("requestList");
+
+                if (!res.success) {
+                    tbody.innerHTML = `<tr><td colspan="3">${res.message}</td></tr>`;
+                    return;
+                }
+
+                let list = res.data;
+
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3">暂无申请</td></tr>`;
+                    return;
+                }
+
+                let html = "";
+
+                list.forEach(r => {
+                    html += `
+                        <tr>
+                            <td>${r.id}</td>
+                            <td>${r.username}</td>
+                            <td>
+                                <button onclick="approve(${r.id}, ${r.userId})">
+                                    通过
+                                </button>
+
+                                <button onclick="reject(${r.id})"
+                                        style="margin-left:10px;background:#f44336;color:white;">
+                                    拒绝
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("加载失败:", err);
+                document.getElementById("requestList").innerHTML =
+                    "<tr><td colspan='3'>加载失败</td></tr>";
+            });
+    }
+
+    // ================= 通过申请 =================
+    function approve(id, userId) {
+
+        if (!confirm("确定通过该申请吗？")) return;
+
+        request(`${BASE}/api/admin/approve?id=${id}&userId=${userId}`)
+            .then(res => {
+                alert(res.message || "操作完成");
+
+                if (res.success) {
+                    loadRequests();
+                }
+            })
+            .catch(() => alert("审批失败"));
+    }
+
+    // ================= 拒绝申请 =================
+    function reject(id) {
+
+        if (!confirm("确定拒绝该申请吗？")) return;
+
+        request(`${BASE}/api/admin/reject?id=${id}`)
+            .then(res => {
+                alert(res.message || "操作完成");
+
+                if (res.success) {
+                    loadRequests();
+                }
+            })
+            .catch(() => alert("拒绝失败"));
+    }
+
+    // ================= 返回首页 =================
+    function goBack() {
+        window.location.href = "index.html";
+    }
+
+</script>
+
+</body>
+</html>

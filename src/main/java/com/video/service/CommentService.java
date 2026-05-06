@@ -114,4 +114,34 @@ public class CommentService {
 
         return success;
     }
+
+    // ================= 热度评论（点赞排序） =================
+    public List<Map<String, Object>> getHotCommentsByVideoId(int videoId, User user) {
+
+        List<Map<String, Object>> list =
+                commentDao.getHotCommentsByVideoId(videoId);
+
+        // ⭐ 同样要加 canDelete（和普通评论一致）
+        Video video = new VideoDao().findById(videoId);
+        int videoOwnerId = (video == null) ? -1 : video.getUserId();
+
+        for (Map<String, Object> map : list) {
+
+            int commentUserId = (int) map.get("userId");
+
+            boolean isCommentOwner = user != null && commentUserId == user.getId();
+            boolean isVideoOwner = user != null && videoOwnerId == user.getId();
+
+            boolean hasPermission = user != null &&
+                    PermissionUtil.hasPermission(user, "comment:delete");
+
+            map.put("canDelete",
+                    isCommentOwner || isVideoOwner || hasPermission
+            );
+        }
+
+        return list;
+    }
+
+
 }

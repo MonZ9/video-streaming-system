@@ -178,7 +178,14 @@ function getVideos() {
             alert("网络或服务器异常");
         });
 }
+// ================= 点赞视频 =================
+function likeVideo(videoId) {
 
+    request(`${BASE}/api/like/likeVideo?videoId=${videoId}`)
+        .then(res => {
+            alert(res.message || "操作完成");
+        });
+}
 // ================= 跳转视频 =================
 function goToVideo(id) {
     window.location.href = `video.html?id=${id}`;
@@ -270,7 +277,10 @@ function loadComments(videoId) {
         return;
     }
 
-    request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}`)
+    // ⭐ 支持前端排序：time / hot
+    const sort = document.querySelector('input[name="sort"]:checked')?.value || "time";
+
+    request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}&sort=${sort}`)
         .then(data => {
 
             let html = "";
@@ -281,20 +291,32 @@ function loadComments(videoId) {
 
                 data.data.forEach(c => {
 
+                    // ⭐ 判断是否可以删除（RBAC）
                     let canDelete =
                         Number(c.userId) === Number(CURRENT_USER_ID) ||
                         Number(CURRENT_VIDEO_USER_ID) === Number(CURRENT_USER_ID) ||
                         CURRENT_IS_ADMIN === true;
 
                     let deleteBtn = canDelete
-                        ? `<button onclick="deleteComment(${c.id}, ${videoId})">删除</button>`
+                        ? `<button onclick="deleteComment(${c.id})" style="color:red;margin-left:5px;">删除</button>`
                         : "";
+
+                    let createdAt = c.createdAt ? new Date(c.createdAt).toLocaleString() : "";
 
                     html += `
                         <div class="comment-item">
-                            <b>${c.username}</b>：${c.content}<br/>
-                            <small>${c.createdAt}</small>
-                            ${deleteBtn}
+                            <div class="comment-user">
+                                ${c.username || ("用户" + c.userId)}
+                                <span style="color:#999;font-size:12px;margin-left:10px;">
+                                    ${createdAt}
+                                </span>
+                            </div>
+                            <p>${c.content}</p>
+                            <div>
+                                <span class="like-count">👍 ${c.likeCount || 0}</span>
+                                <button onclick="likeComment(${c.id})">点赞</button>
+                                ${deleteBtn}
+                            </div>
                         </div>
                     `;
                 });
@@ -309,6 +331,20 @@ function loadComments(videoId) {
         });
 }
 
+// ================= 点赞评论 =================
+function likeComment(commentId) {
+
+    request(`${BASE}/api/like/likeComment?commentId=${commentId}`)
+        .then(res => {
+
+            alert(res.message || "操作完成");
+
+            if (res.success) {
+                const videoId = new URLSearchParams(window.location.search).get("id");
+                loadComments(videoId);
+            }
+        });
+}
 // ================= 删除评论 =================
 function deleteComment(commentId, videoId) {
 
@@ -377,4 +413,20 @@ function updateUIByRole(roleId) {
     if (applyBtn) {
         applyBtn.style.display = (roleId === 0) ? "inline-block" : "none";
     }
+}
+
+function likeVideo() {
+
+    const videoId = new URLSearchParams(window.location.search).get("id");
+
+    request(`${BASE}/api/like/likeVideo?videoId=${videoId}`)
+        .then(res => {
+
+            alert(res.message || "操作完成");
+
+            if (res.success) {
+                loadVideoDetail(); // 或刷新点赞数
+            }
+        })
+        .catch(() => alert("点赞失败"));
 }

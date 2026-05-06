@@ -6,7 +6,9 @@ import com.video.util.LogUtil;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VideoDao extends BaseDao<Video> {
 
@@ -75,6 +77,46 @@ public class VideoDao extends BaseDao<Video> {
                 video.setAuthorName(rs.getString("authorName"));
 
                 return video;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public Map<String, Object> findVideoDetailWithLike(int id) {
+
+        String sql =
+                "SELECT v.*, " +
+                        "COUNT(l.id) AS like_count " +
+                        "FROM videos v " +
+                        "LEFT JOIN likes l " +
+                        "ON v.id = l.target_id AND l.target_type = 'video' " +
+                        "WHERE v.id = ? " +
+                        "GROUP BY v.id";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+
+                Map<String, Object> map = new HashMap<>();
+
+                map.put("id", rs.getInt("id"));
+                map.put("title", rs.getString("title"));
+                map.put("url", rs.getString("url"));
+                map.put("description", rs.getString("description"));
+                map.put("userId", rs.getInt("user_id"));
+
+                // ⭐关键：点赞数
+                map.put("likeCount", rs.getInt("like_count"));
+
+                return map;
             }
 
         } catch (Exception e) {

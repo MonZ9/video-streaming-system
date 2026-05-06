@@ -3,13 +3,19 @@ package com.video.service;
 import com.alibaba.fastjson.JSON;
 import com.video.dao.VideoDao;
 import com.video.model.Video;
+import com.video.util.DbUtil;
 import com.video.util.LogUtil;
 import com.video.util.RedisUtil;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.List;
+import java.util.Map;
 
 public class VideoService {
 
+    private LikeService likeService = new LikeService();
     private VideoDao videoDao = new VideoDao();
 
     // ================= 新增视频 =================
@@ -137,4 +143,29 @@ public class VideoService {
 
         return success;
     }
+
+    public Map<String, Object> getVideoById(int id) {
+        return videoDao.findVideoDetailWithLike(id);
+    }
+
+    public int getVideoLikeCount(int videoId) {
+        String sql = "SELECT COUNT(id) AS cnt FROM likes WHERE target_id=? AND target_type='video'";
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, videoId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("cnt");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    // VideoService.java
+    public boolean isVideoLiked(int userId, int videoId) {
+        return likeService.isVideoLiked(userId, videoId); // 调用 LikeService
+    }
+
 }

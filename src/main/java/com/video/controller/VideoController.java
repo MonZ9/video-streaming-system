@@ -74,36 +74,60 @@ public class VideoController {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    // ================= 获取单个视频 =================
-    public void getVideo(HttpServletRequest req, HttpServletResponse resp) throws Exception {
 
-        resp.setContentType("application/json;charset=UTF-8");
-        Map<String, Object> result = new HashMap<>();
 
-        try {
-            int id = Integer.parseInt(req.getParameter("id"));
+    // ================= 获取所有视频（不需要登录） =======// ================= 获取单个视频 =================
+        public void getVideo(HttpServletRequest req, HttpServletResponse resp) throws Exception {
 
-            Video video = videoService.getVideo(id);
+            resp.setContentType("application/json;charset=UTF-8");
+            Map<String, Object> result = new HashMap<>();
 
-            // ❗关键修复点：判断空
-            if (video == null) {
+            try {
+                int id = Integer.parseInt(req.getParameter("id"));
+
+                // 🔥 获取视频详情（Video对象）
+                Video video = videoService.getVideo(id);
+
+                if (video == null) {
+                    result.put("success", false);
+                    result.put("message", "视频不存在或已被删除");
+                } else {
+
+                    // 🔥 查询视频点赞数
+                    int likeCount = videoService.getVideoLikeCount(id); // 假设你新增了这个方法
+                    // 如果 Video 对象里直接加字段也可以 video.setLikeCount(likeCount);
+                    // 🔥 当前登录用户（可能为 null）
+                    User currentUser = AuthUtil.getLoginUser(req);
+
+                    boolean liked = false;
+                    if (currentUser != null) {
+                        liked = videoService.isVideoLiked(currentUser.getId(), id); // 新增 Service 方法
+                    }
+
+                    // 构建返回 Map
+                    Map<String, Object> videoMap = new HashMap<>();
+                    videoMap.put("id", video.getId());
+                    videoMap.put("title", video.getTitle());
+                    videoMap.put("description", video.getDescription());
+                    videoMap.put("url", video.getUrl());
+                    videoMap.put("userId", video.getUserId());
+                    videoMap.put("authorName", video.getAuthorName());
+                    videoMap.put("likeCount", likeCount);  // 点赞数
+                    videoMap.put("liked", liked);          // 当前用户是否已点赞 ⭐
+
+                    result.put("success", true);
+                    result.put("data", videoMap);
+                }
+
+            } catch (Exception e) {
+                LogUtil.error("getVideo error", e);
                 result.put("success", false);
-                result.put("message", "视频不存在或已被删除");
-            } else {
-                result.put("success", true);
-                result.put("data", video);
+                result.put("message", "服务器异常");
             }
 
-        } catch (Exception e) {
-            LogUtil.error("getVideo error", e);
-            result.put("success", false);
-            result.put("message", "服务器异常");
+            resp.getWriter().write(JSON.toJSONString(result));
         }
 
-        resp.getWriter().write(JSON.toJSONString(result));
-    }
-
-    // ================= 获取所有视频（不需要登录） =================
     public void getAllVideos(HttpServletRequest req, HttpServletResponse resp) throws Exception {
 
         resp.setContentType("application/json;charset=UTF-8");
