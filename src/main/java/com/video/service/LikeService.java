@@ -9,9 +9,11 @@ public class LikeService {
     // ================= 视频点赞/取消 =================
     public boolean toggleVideoLike(int userId, int videoId) {
         if (likeDao.isLiked(userId, videoId, "video")) {
-            return likeDao.unlike(userId, videoId, "video");  // 已点赞 → 取消
+            boolean success = likeDao.unlike(userId, videoId, "video");  // 已点赞 → 取消
+            return success ? false : true;
         } else {
-            return likeDao.like(userId, videoId, "video");    // 未点赞 → 点赞
+            boolean success = likeDao.like(userId, videoId, "video");    // 未点赞 → 点赞
+            return success ? true : false;
         }
     }
 
@@ -22,9 +24,11 @@ public class LikeService {
     // ================= 评论点赞/取消 =================
     public boolean toggleCommentLike(int userId, int commentId) {
         if (likeDao.isLiked(userId, commentId, "comment")) {
-            return likeDao.unlike(userId, commentId, "comment");  // 已点赞 → 取消
+            boolean success = likeDao.unlike(userId, commentId, "comment");  // 已点赞 → 取消
+            return success ? false : true;
         } else {
-            return likeDao.like(userId, commentId, "comment");    // 未点赞 → 点赞
+            boolean success = likeDao.like(userId, commentId, "comment");    // 未点赞 → 点赞
+            return success ? true : false;
         }
     }
 

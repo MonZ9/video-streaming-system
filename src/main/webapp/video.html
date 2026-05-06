@@ -211,6 +211,8 @@
     request(`${BASE}/api/like/toggleVideoLike?videoId=${videoId}`)
             .then(res => {
 
+              console.log("toggle返回:", res);
+
               if (!res.success) {
                 alert(res.message || "操作失败");
                 return;
