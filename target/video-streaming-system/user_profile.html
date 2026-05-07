@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>用户主页</title>
+    <style>
+        body { font-family: Arial; text-align: center; }
+        .box { width: 400px; margin: 50px auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; text-align: left; }
+        .item { margin: 10px 0; }
+    </style>
+</head>
+<body onload="loadUserProfile()">
+<h2>用户主页</h2>
+<div class="box">
+    <div class="item">ID：<span id="uid"></span></div>
+    <div class="item">用户名：<span id="username"></span></div>
+    <div class="item">角色ID：<span id="roleId"></span></div>
+    <div class="item">个人简介：<span id="bio"></span></div>
+</div>
+<button onclick="history.back()">返回</button>
+
+<script src="js/api.js"></script>
+<script>
+    function loadUserProfile() {
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get("userId");
+        if (!userId) {
+            alert("缺少用户ID");
+            return;
+        }
+        request(`${BASE}/api/user/viewProfile?userId=${userId}`)
+            .then(res => {
+                if (!res.success) {
+                    alert(res.message);
+                    return;
+                }
+                const u = res.data;
+                document.getElementById("uid").innerText = u.id;
+                document.getElementById("username").innerText = u.username;
+                document.getElementById("roleId").innerText = u.roleId;
+                document.getElementById("bio").innerText = u.bio || "无";
+            })
+            .catch(() => alert("加载失败"));
+    }
+</script>
+</body>
+</html>
