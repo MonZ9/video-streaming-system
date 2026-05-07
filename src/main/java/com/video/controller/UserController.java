@@ -2,13 +2,16 @@ package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.video.model.User;
+import com.video.service.FollowService;
 import com.video.service.UserService;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
 import com.video.util.RedisUtil;
 
 import javax.servlet.http.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class UserController {
@@ -243,6 +246,40 @@ public class UserController {
             res.put("message", "服务器异常");
         }
         resp.getWriter().write(JSON.toJSONString(res));
+    }
+    // ================= 展示用户列表 =================
+    public void listUsers(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        resp.setContentType("application/json;charset=UTF-8");
+        Map<String, Object> result = new HashMap<>();
+
+        User loginUser = AuthUtil.getLoginUser(req);
+        if (loginUser == null) {
+            result.put("success", false);
+            result.put("message", "请先登录");
+            resp.getWriter().write(JSON.toJSONString(result));
+            return;
+        }
+
+        List<User> allUsers = userService.getAllUsers();
+        List<Map<String, Object>> list = new ArrayList<>();
+        FollowService followService = new FollowService(); // 简单处理
+
+        for (User u : allUsers) {
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("id", u.getId());
+            userMap.put("username", u.getUsername());
+            boolean isFollowed = false;
+            if (u.getId() != loginUser.getId()) {
+                isFollowed = followService.isFollowed(loginUser.getId(), u.getId());
+            }
+            userMap.put("isFollowed", isFollowed);
+            userMap.put("isMe", u.getId() == loginUser.getId());
+            list.add(userMap);
+        }
+
+        result.put("success", true);
+        result.put("data", list);
+        resp.getWriter().write(JSON.toJSONString(result));
     }
 
 }

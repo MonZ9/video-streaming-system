@@ -175,6 +175,7 @@ public class UserService {
         return list;
     }
 
+
     public int getPrimaryRoleId(int userId) {
 
         String sql = "SELECT role_id FROM user_roles WHERE user_id = ? LIMIT 1";
@@ -197,6 +198,7 @@ public class UserService {
         return 2; // 默认普通用户
     }
 
+    //role_id判断
     public boolean hasRole(int userId, int roleId) {
         String sql = "SELECT 1 FROM user_roles WHERE user_id=? AND role_id=?";
 
@@ -214,9 +216,13 @@ public class UserService {
             return false;
         }
     }
-
+//返回简介
     public boolean updateBio(int userId, String bio) {
         return userDao.updateBio(userId, bio);
+    }
+//返回用户
+    public List<User> getAllUsers() {
+        return userDao.findAll();
     }
 
 }
