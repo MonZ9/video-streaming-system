@@ -15,6 +15,19 @@ import java.util.Map;
 
 public class DispatcherServlet extends HttpServlet {
 
+    /**
+     * Servlet 初始化时，启动 IoC 容器
+     */
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        // 扫描 service、dao 包，创建所有带 @Bean 的类的实例
+        BeanFactory.init("com.video.service");
+        BeanFactory.init("com.video.dao");
+        // Controller 暂不纳入容器，仍然通过反射创建
+        LogUtil.info("IoC 容器初始化完成");
+    }
+
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
@@ -47,7 +60,6 @@ public class DispatcherServlet extends HttpServlet {
 
             String[] parts = path.split("/");
             if (parts.length < 2) {
-                // URL 格式错误也算业务异常
                 throw new BusinessException(400, "URL格式错误，应为 /模块/方法");
             }
 
@@ -72,10 +84,8 @@ public class DispatcherServlet extends HttpServlet {
             LogUtil.info("执行成功：" + className + "." + methodName);
 
         } catch (InvocationTargetException e) {
-            // 目标方法内部抛出的异常，取原始异常处理
             handleException(e.getTargetException(), resp, out);
         } catch (Exception e) {
-            // 其他所有异常（类找不到、方法找不到等）
             handleException(e, resp, out);
         }
     }
@@ -84,7 +94,6 @@ public class DispatcherServlet extends HttpServlet {
      * 统一异常处理：转换为 JSON 错误响应
      */
     private void handleException(Throwable e, HttpServletResponse resp, PrintWriter out) {
-        // 避免响应已提交后重复写入
         if (resp.isCommitted()) {
             return;
         }
@@ -92,7 +101,6 @@ public class DispatcherServlet extends HttpServlet {
         int httpStatus = 500;
         String message = "服务器内部错误";
 
-        // 记录完整日志（不暴露给前端）
         LogUtil.error("请求处理异常", e);
 
         if (e instanceof BusinessException) {
@@ -100,11 +108,6 @@ public class DispatcherServlet extends HttpServlet {
             httpStatus = be.getCode();
             message = be.getMessage();
         }
-        // 可根据需要扩展特定异常的处理，如 SQLException、NumberFormatException 等
-        // else if (e instanceof NumberFormatException) {
-        //     httpStatus = 400;
-        //     message = "参数格式错误";
-        // }
 
         resp.setStatus(httpStatus);
         Map<String, Object> result = Result.fail(message);
