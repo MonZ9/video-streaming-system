@@ -1,11 +1,17 @@
 package com.video.core;
 
+import com.alibaba.fastjson.JSON;
+import com.video.exception.BusinessException;
 import com.video.util.LogUtil;
+import com.video.util.Result;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 public class DispatcherServlet extends HttpServlet {
 
@@ -13,83 +19,98 @@ public class DispatcherServlet extends HttpServlet {
     protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        resp.setContentType("text/html;charset=UTF-8");
+        // 1. 统一设置响应类型为 JSON（首页特殊处理）
+        resp.setContentType("application/json;charset=UTF-8");
+        PrintWriter out = resp.getWriter();
 
         try {
             String uri = req.getRequestURI();
             String contextPath = req.getContextPath();
-
-            // ================= 获取路径 =================
             String path = uri.substring(contextPath.length());
 
-            // ================= 去掉 /api =================
             if (path.startsWith("/api")) {
                 path = path.substring(4);
             }
 
-            // ================= 首页处理 =================
+            // 首页或根路径直接返回文本
             if (path.equals("/") || path.equals("")) {
-                LogUtil.info("访问首页");
-                resp.getWriter().write("后端服务已启动");
+                resp.setContentType("text/html;charset=UTF-8");
+                out.write("后端服务已启动");
                 return;
             }
 
-            // ================= 去掉开头的 / =================
             if (path.startsWith("/")) {
                 path = path.substring(1);
             }
 
             LogUtil.info("请求路径：" + path);
 
-            // ================= 拆分路径 =================
             String[] parts = path.split("/");
-
             if (parts.length < 2) {
-                LogUtil.warn("URL格式错误：" + path);
-                resp.getWriter().write("URL格式错误，应为 /user/login");
-                return;
+                // URL 格式错误也算业务异常
+                throw new BusinessException(400, "URL格式错误，应为 /模块/方法");
             }
 
-            // ================= 获取 controller + method =================
             String controllerName = parts[0];
             String methodName = parts[1];
-
-            // ================= 拼接类名 =================
             String className = "com.video.controller." +
                     capitalize(controllerName) + "Controller";
 
             LogUtil.info("准备调用控制器：" + className + " 方法：" + methodName);
 
-            // ================= 反射调用 =================
             Class<?> clazz = Class.forName(className);
             Object controller = clazz.getDeclaredConstructor().newInstance();
-
             Method method = clazz.getMethod(
                     methodName,
                     HttpServletRequest.class,
                     HttpServletResponse.class
             );
 
-            //执行方法
+            // 执行目标 Controller 方法
             method.invoke(controller, req, resp);
 
             LogUtil.info("执行成功：" + className + "." + methodName);
 
-        } catch (ClassNotFoundException e) {
-            LogUtil.error("找不到控制器", e);
-            resp.getWriter().write("找不到控制器: " + e.getMessage());
-
-        } catch (NoSuchMethodException e) {
-            LogUtil.error("找不到方法", e);
-            resp.getWriter().write("找不到方法: " + e.getMessage());
-
+        } catch (InvocationTargetException e) {
+            // 目标方法内部抛出的异常，取原始异常处理
+            handleException(e.getTargetException(), resp, out);
         } catch (Exception e) {
-            LogUtil.error("服务器异常", e);
-            resp.getWriter().write("服务器异常: " + e.getMessage());
+            // 其他所有异常（类找不到、方法找不到等）
+            handleException(e, resp, out);
         }
     }
 
-    // 首字母大写
+    /**
+     * 统一异常处理：转换为 JSON 错误响应
+     */
+    private void handleException(Throwable e, HttpServletResponse resp, PrintWriter out) {
+        // 避免响应已提交后重复写入
+        if (resp.isCommitted()) {
+            return;
+        }
+
+        int httpStatus = 500;
+        String message = "服务器内部错误";
+
+        // 记录完整日志（不暴露给前端）
+        LogUtil.error("请求处理异常", e);
+
+        if (e instanceof BusinessException) {
+            BusinessException be = (BusinessException) e;
+            httpStatus = be.getCode();
+            message = be.getMessage();
+        }
+        // 可根据需要扩展特定异常的处理，如 SQLException、NumberFormatException 等
+        // else if (e instanceof NumberFormatException) {
+        //     httpStatus = 400;
+        //     message = "参数格式错误";
+        // }
+
+        resp.setStatus(httpStatus);
+        Map<String, Object> result = Result.fail(message);
+        out.write(JSON.toJSONString(result));
+    }
+
     private String capitalize(String str) {
         if (str == null || str.length() == 0) return str;
         return str.substring(0, 1).toUpperCase() + str.substring(1);
