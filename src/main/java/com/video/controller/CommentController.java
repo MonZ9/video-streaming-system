@@ -3,6 +3,7 @@ package com.video.controller;
 import com.alibaba.fastjson.JSON;
 import com.video.model.User;
 import com.video.service.CommentService;
+import com.video.service.LikeService;
 import com.video.service.UserService;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
@@ -16,6 +17,7 @@ public class CommentController {
 
     private CommentService commentService = new CommentService();
     private UserService userService = new UserService();
+    private LikeService likeService = new LikeService();
 
     // ================= 获取当前登录用户 =================
     private User getLoginUser(HttpServletRequest req) {

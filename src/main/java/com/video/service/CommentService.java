@@ -17,6 +17,7 @@ import java.util.Map;
 public class CommentService {
 
     private CommentDao commentDao = new CommentDao();
+    private LikeService likeService = new LikeService();
 
     // ================= 添加评论 =================
     public boolean addComment(int videoId, int userId, String content) {
@@ -69,16 +70,27 @@ public class CommentService {
         for (Map<String, Object> map : list) {
 
             int commentUserId = (int) map.get("userId");
+            int commentId = (int) map.get("id");
 
             boolean isCommentOwner = user != null && commentUserId == user.getId();
             boolean isVideoOwner = user != null && videoOwnerId == user.getId();
-
-            boolean hasPermission = user != null &&
-                    PermissionUtil.hasPermission(user, "comment:delete");
+            boolean hasPermission = user != null && PermissionUtil.hasPermission(user, "comment:delete");
 
             boolean canDelete = isCommentOwner || isVideoOwner || hasPermission;
 
             map.put("canDelete", canDelete);
+
+            // ⭐ 新增：点赞数
+            int likeCount = likeService.getCommentLikeCount(commentId);
+            map.put("likeCount", likeCount);
+
+            // ⭐ 新增：当前用户是否已点赞
+            boolean liked = false;
+            if (user != null) {
+                liked = likeService.isCommentLiked(user.getId(), commentId);
+            }
+            map.put("liked", liked);
+
         }
 
         return list;
@@ -128,16 +140,21 @@ public class CommentService {
         for (Map<String, Object> map : list) {
 
             int commentUserId = (int) map.get("userId");
+            int commentId = (int) map.get("id");
 
             boolean isCommentOwner = user != null && commentUserId == user.getId();
             boolean isVideoOwner = user != null && videoOwnerId == user.getId();
+            boolean hasPermission = user != null && PermissionUtil.hasPermission(user, "comment:delete");
 
-            boolean hasPermission = user != null &&
-                    PermissionUtil.hasPermission(user, "comment:delete");
+            map.put("canDelete", isCommentOwner || isVideoOwner || hasPermission);
 
-            map.put("canDelete",
-                    isCommentOwner || isVideoOwner || hasPermission
-            );
+            // ⭐ liked 字段（likeCount 已存在，无需再查）
+            boolean liked = false;
+            if (user != null) {
+                liked = likeService.isCommentLiked(user.getId(), commentId);
+            }
+            map.put("liked", liked);
+
         }
 
         return list;

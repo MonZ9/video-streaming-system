@@ -152,4 +152,65 @@ public class UserController {
 
         resp.getWriter().write(JSON.toJSONString(result));
     }
+    // ================= 获取个人信息 =================
+    public void getProfile(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+
+        resp.setContentType("application/json;charset=UTF-8");
+
+        Map<String, Object> res = new HashMap<>();
+
+        User loginUser = AuthUtil.getLoginUser(req);
+
+        if (loginUser == null) {
+            res.put("success", false);
+            res.put("message", "未登录");
+            resp.getWriter().write(JSON.toJSONString(res));
+            return;
+        }
+
+        // ⭐ 关键：重新查数据库
+        User user = userService.getUserById(loginUser.getId());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        int roleId = userService.getPrimaryRoleId(user.getId());
+        data.put("roleId", roleId);
+        data.put("bio", user.getBio());
+
+        res.put("success", true);
+        res.put("data", data);
+
+        resp.getWriter().write(JSON.toJSONString(res));
+    }
+
+    // ================= 修改简介 =================
+    public void updateBio(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+
+        req.setCharacterEncoding("UTF-8");
+        System.out.println("Authorization=" + req.getHeader("Authorization"));
+        resp.setContentType("application/json;charset=UTF-8");
+
+        User user = AuthUtil.getLoginUser(req);
+
+        Map<String, Object> res = new HashMap<>();
+
+        if (user == null) {
+            res.put("success", false);
+            res.put("message", "未登录");
+            resp.getWriter().write(JSON.toJSONString(res));
+            return;
+        }
+
+        String bio = req.getParameter("bio");
+
+        // ⭐⭐⭐ 关键改这里
+        boolean success = userService.updateBio(user.getId(), bio);
+
+        res.put("success", success);
+        res.put("message", success ? "修改成功" : "修改失败");
+
+        resp.getWriter().write(JSON.toJSONString(res));
+    }
+
 }

@@ -3,6 +3,7 @@ package com.video.controller;
 import com.alibaba.fastjson.JSON;
 import com.video.model.User;
 import com.video.model.Video;
+import com.video.service.FollowService;
 import com.video.service.UserService;
 import com.video.service.VideoService;
 import com.video.util.AuthUtil;
@@ -19,6 +20,7 @@ public class VideoController {
 
     private VideoService videoService = new VideoService();
     private UserService userService = new UserService();
+    private FollowService followService = new FollowService();
 
     // ================= 上传视频 =================
     // ================= 上传视频 =================
@@ -87,21 +89,23 @@ public class VideoController {
 
                 // 🔥 获取视频详情（Video对象）
                 Video video = videoService.getVideo(id);
-
                 if (video == null) {
                     result.put("success", false);
                     result.put("message", "视频不存在或已被删除");
                 } else {
-
                     // 🔥 查询视频点赞数
                     int likeCount = videoService.getVideoLikeCount(id); // 假设你新增了这个方法
-                    // 如果 Video 对象里直接加字段也可以 video.setLikeCount(likeCount);
                     // 🔥 当前登录用户（可能为 null）
                     User currentUser = AuthUtil.getLoginUser(req);
-
                     boolean liked = false;
                     if (currentUser != null) {
                         liked = videoService.isVideoLiked(currentUser.getId(), id); // 新增 Service 方法
+                    }
+                    // ⭐ 新增：获取关注信息
+                    boolean followed = false;
+                    int followerCount = followService.getFollowerCount(video.getUserId());
+                    if (currentUser != null) {
+                        followed = followService.isFollowed(currentUser.getId(), video.getUserId());
                     }
 
                     // 构建返回 Map
@@ -114,6 +118,8 @@ public class VideoController {
                     videoMap.put("authorName", video.getAuthorName());
                     videoMap.put("likeCount", likeCount);  // 点赞数
                     videoMap.put("liked", liked);          // 当前用户是否已点赞 ⭐
+                    videoMap.put("followed", followed);           // ⭐
+                    videoMap.put("followerCount", followerCount); // ⭐
 
                     result.put("success", true);
                     result.put("data", videoMap);

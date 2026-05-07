@@ -10,6 +10,7 @@ public class User {
     private String username;
     private String passwordHash;
     private int roleId;
+    private String bio;
 
     //盐
     private String salt;
@@ -76,5 +77,8 @@ public class User {
         this.roleId = roleId;
     }
 
+    public String getBio() { return bio; }
+
+    public void setBio(String bio) { this.bio = bio; }
 
 }

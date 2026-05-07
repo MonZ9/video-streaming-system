@@ -215,4 +215,8 @@ public class UserService {
         }
     }
 
+    public boolean updateBio(int userId, String bio) {
+        return userDao.updateBio(userId, bio);
+    }
+
 }

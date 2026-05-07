@@ -72,6 +72,8 @@ public class UserDao extends BaseDao<User> {
                 user.setPasswordHash(rs.getString("password_hash"));
                 user.setSalt(rs.getString("salt"));
                 user.setAdmin(rs.getBoolean("is_admin"));
+
+                user.setBio(rs.getString("bio"));
                 return user;
             }
 
@@ -81,4 +83,24 @@ public class UserDao extends BaseDao<User> {
 
         return null;
     }
+
+    public boolean updateBio(int userId, String bio) {
+
+        String sql = "UPDATE users SET bio=? WHERE id=?";
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, bio);
+            ps.setInt(2, userId);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
 }

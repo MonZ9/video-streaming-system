@@ -32,12 +32,19 @@ public class LikeService {
         }
     }
 
+
+
+    public boolean isVideoLiked(int userId, int videoId) {
+        return likeDao.isLiked(userId, videoId, "video");
+    }
+
+    // LikeService.java
     public int getCommentLikeCount(int commentId) {
         return likeDao.count(commentId, "comment");
     }
 
-    public boolean isVideoLiked(int userId, int videoId) {
-        return likeDao.isLiked(userId, videoId, "video");
+    public boolean isCommentLiked(int userId, int commentId) {
+        return likeDao.isLiked(userId, commentId, "comment");
     }
 
 }
