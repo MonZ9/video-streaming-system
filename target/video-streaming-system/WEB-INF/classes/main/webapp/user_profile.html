@@ -7,6 +7,7 @@
         body { font-family: Arial; text-align: center; }
         .box { width: 400px; margin: 50px auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; text-align: left; }
         .item { margin: 10px 0; }
+        #followBtn { padding: 8px 16px; cursor: pointer; }
     </style>
 </head>
 <body onload="loadUserProfile()">
@@ -16,19 +17,25 @@
     <div class="item">用户名：<span id="username"></span></div>
     <div class="item">角色ID：<span id="roleId"></span></div>
     <div class="item">个人简介：<span id="bio"></span></div>
+    <div class="item">
+        <button id="followBtn" style="display:none;" onclick="toggleFollow()">关注</button>
+    </div>
 </div>
 <button onclick="history.back()">返回</button>
 
 <script src="js/api.js"></script>
 <script>
+    let currentProfileUserId = null;
+    let isFollowed = false;
+
     function loadUserProfile() {
         const params = new URLSearchParams(window.location.search);
-        const userId = params.get("userId");
-        if (!userId) {
+        currentProfileUserId = params.get("userId");
+        if (!currentProfileUserId) {
             alert("缺少用户ID");
             return;
         }
-        request(`${BASE}/api/user/viewProfile?userId=${userId}`)
+        request(`${BASE}/api/user/viewProfile?userId=${currentProfileUserId}`)
             .then(res => {
                 if (!res.success) {
                     alert(res.message);
@@ -39,8 +46,44 @@
                 document.getElementById("username").innerText = u.username;
                 document.getElementById("roleId").innerText = u.roleId;
                 document.getElementById("bio").innerText = u.bio || "无";
+
+                // 处理关注按钮
+                isFollowed = u.isFollowed;
+                const btn = document.getElementById("followBtn");
+                if (u.isMe) {
+                    btn.style.display = "none";  // 不显示关注自己
+                } else {
+                    btn.style.display = "inline-block";
+                    updateFollowBtn();
+                }
             })
             .catch(() => alert("加载失败"));
+    }
+
+    function updateFollowBtn() {
+        const btn = document.getElementById("followBtn");
+        if (isFollowed) {
+            btn.innerText = "取消关注";
+            btn.style.backgroundColor = "#f44336";
+            btn.style.color = "white";
+        } else {
+            btn.innerText = "关注";
+            btn.style.backgroundColor = "#4CAF50";
+            btn.style.color = "white";
+        }
+    }
+
+    function toggleFollow() {
+        request(`${BASE}/api/follow/toggleFollow?userId=${currentProfileUserId}`)
+            .then(res => {
+                if (res.success) {
+                    isFollowed = res.followed;   // 后端返回最新状态
+                    updateFollowBtn();
+                } else {
+                    alert(res.message);
+                }
+            })
+            .catch(() => alert("操作失败"));
     }
 </script>
 </body>

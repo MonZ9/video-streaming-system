@@ -238,6 +238,16 @@ public class UserController {
             int roleId = userService.getPrimaryRoleId(user.getId());
             data.put("roleId", roleId);
 
+            // 获取当前登录用户，判断是否已关注
+            User loginUser = AuthUtil.getLoginUser(req);
+            boolean isFollowed = false;
+            if (loginUser != null && loginUser.getId() != userId) {
+                FollowService followService = new FollowService();
+                isFollowed = followService.isFollowed(loginUser.getId(), userId);
+            }
+            data.put("isFollowed", isFollowed);
+            data.put("isMe", loginUser != null && loginUser.getId() == userId);
+
             res.put("success", true);
             res.put("data", data);
         } catch (Exception e) {
