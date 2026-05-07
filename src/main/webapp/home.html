@@ -35,16 +35,6 @@
       cursor: pointer;
     }
 
-    .title {
-      cursor: pointer;
-      color: #333;
-    }
-
-    .title:hover {
-      color: blue;
-      text-decoration: underline;
-    }
-
     #userInfo {
       margin: 10px;
       font-weight: bold;
@@ -63,6 +53,16 @@
       height: 80px;
       resize: none;
     }
+
+    /* ⭐ 新增：用户列表展示 */
+    #userListBox {
+      margin: 20px auto;
+      width: 400px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      display: none;
+      text-align: left;
+    }
   </style>
 </head>
 
@@ -72,11 +72,13 @@
 
 <div id="userInfo">加载中...</div>
 
-<!-- ⭐ 新增管理员申请按钮 -->
 <button onclick="applyAdmin()">申请成为管理员</button>
 <button id="adminBtn" onclick="goAdmin()" style="display:none;">管理员审批</button>
 <button onclick="getVideos()">刷新视频</button>
 <button onclick="logout()">退出登录</button>
+<button onclick="goFollowers()">查看粉丝列表</button>
+<button onclick="goFollowing()">查看关注列表</button>
+<button onclick="goProfile()">个人主页</button>
 
 <!-- 上传视频 -->
 <div id="uploadBox">
@@ -89,12 +91,14 @@
 
     <input type="file" name="videoFile" required><br><br>
 
-    <!-- ✅ 只保留调用，不写函数 -->
     <button type="button" onclick="uploadVideo()">上传</button>
   </form>
 </div>
 
 <div id="videoList"></div>
+
+<!-- ⭐ 用户列表展示 -->
+<div id="userListBox"></div>
 
 <script src="js/api.js"></script>
 
@@ -104,7 +108,6 @@
     getVideos();
   }
 
-  // ================= 用户信息 =================
   function loadUser() {
     request(`${BASE}/api/user/getUserInfo`)
             .then(res => {
@@ -112,32 +115,23 @@
 
                 const roleId = res.data.roleId;
 
-                // ================= 用户信息 =================
                 document.getElementById("userInfo").innerText =
                         "欢迎你：" + res.data.username;
 
-                // ================= 全局状态 =================
                 CURRENT_USER_ID = res.data.id;
                 CURRENT_ROLE_ID = roleId;
 
-                console.log("roleId:", roleId);
-
-                // ================= RBAC UI控制 =================
-
-                // 申请管理员按钮（普通用户可见）
                 const applyBtn = document.querySelector("button[onclick='applyAdmin()']");
                 if (applyBtn) {
                   applyBtn.style.display = (roleId === 1) ? "none" : "inline-block";
                 }
 
-                // 管理员审批按钮（只有管理员可见）
                 const adminBtn = document.getElementById("adminBtn");
                 if (adminBtn) {
                   adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
                 }
 
               } else {
-                document.getElementById("userInfo").innerText = "未登录";
                 window.location.href = "login.html";
               }
             })
@@ -146,7 +140,7 @@
             });
   }
 
-  // ================= 视频列表（统一走 api.js） =================
+  // ================= 视频列表 =================
   function getVideos() {
     request(`${BASE}/api/video/getAllVideos`)
             .then(data => {
@@ -174,8 +168,15 @@
                 html += `
             <div class="card">
               <h3 onclick="goToVideo(${v.id})">${v.title}</h3>
+
+              <p>
+                作者：${v.authorName || ("用户" + v.userId)}
+              </p>
+
               <video src="${v.url}" controls></video>
+
               <p>${v.description || "无描述"}</p>
+
               <button onclick="goToVideo(${v.id})">查看详情</button>
               <button onclick="deleteVideoById(${v.id})">删除</button>
             </div>
@@ -187,22 +188,64 @@
             .catch(() => alert("获取视频失败"));
   }
 
-  // ================= 退出登录 =================
-  function logout() {
-    request(`${BASE}/api/user/logout`)
+  // ================= 粉丝列表 =================
+  function showFollowers(userId) {
+    request(`${BASE}/api/follow/getFollowers?userId=${userId}`)
             .then(res => {
-              alert(res.message);
-              window.location.href = "login.html";
-            })
-            .catch(() => alert("退出失败"));
+              if (!res.success) {
+                alert(res.message || "获取粉丝失败");
+                return;
+              }
+              renderUserList(res.data, "粉丝列表");
+            });
   }
 
-  // ================= 跳转详情 =================
+  // ================= 关注列表 =================
+  function showFollowing(userId) {
+    request(`${BASE}/api/follow/getFollowing?userId=${userId}`)
+            .then(res => {
+              if (!res.success) {
+                alert(res.message || "获取关注失败");
+                return;
+              }
+              renderUserList(res.data, "关注列表");
+            });
+  }
+
+  // ================= 渲染列表 =================
+  function renderUserList(list, title) {
+
+    const box = document.getElementById("userListBox");
+
+    if (!list || list.length === 0) {
+      box.innerHTML = `<h3>${title}</h3><p>暂无数据</p>`;
+      box.style.display = "block";
+      return;
+    }
+
+    let html = `<h3>${title}</h3><ul>`;
+
+    list.forEach(u => {
+      html += `<li>${u.username || ("用户" + u.userId)}</li>`;
+    });
+
+    html += `</ul>`;
+
+    box.innerHTML = html;
+    box.style.display = "block";
+  }
+
+  function logout() {
+    request(`${BASE}/api/user/logout`)
+            .then(() => {
+              window.location.href = "login.html";
+            });
+  }
+
   function goToVideo(id) {
     window.location.href = `video.html?id=${id}`;
   }
 
-  // ================= 删除视频 =================
   function deleteVideoById(id) {
     if (!confirm("确定删除这个视频吗？")) return;
 
@@ -210,9 +253,21 @@
             .then(res => {
               alert(res.message);
               if (res.success) getVideos();
-            })
-            .catch(() => alert("删除失败"));
+            });
   }
+
+  function goFollowers() {
+    window.location.href = "followers.html";
+  }
+
+  function goFollowing() {
+    window.location.href = "following.html";
+  }
+
+  function goProfile() {
+    window.location.href = "profile.html";
+  }
+
 </script>
 
 </body>

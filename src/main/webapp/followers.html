@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>粉丝列表</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background-color: #f8f8f8;
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+
+        #list {
+            margin-top: 20px;
+        }
+
+        .user-card {
+            width: 300px;
+            margin: 12px auto;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fff;
+            text-align: left;
+            transition: 0.2s;
+        }
+
+        .user-card:hover {
+            background: #f3f3f3;
+        }
+
+        .user-id {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .username {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+
+        .empty {
+            color: #999;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body onload="loadFollowers()">
+
+<h2>我的粉丝</h2>
+
+<div id="list">加载中...</div>
+
+<script src="js/api.js"></script>
+
+<script>
+    function loadFollowers() {
+        request(`${BASE}/api/follow/getFollowers`)
+            .then(res => {
+
+                if (!res.success) {
+                    alert(res.message);
+                    return;
+                }
+
+                let html = "";
+
+                if (!res.data || res.data.length === 0) {
+                    document.getElementById("list").innerHTML =
+                        "<div class='empty'>暂无粉丝</div>";
+                    return;
+                }
+
+                res.data.forEach(u => {
+                    html += `
+                        <div class="user-card">
+                            <div class="user-id">ID：${u.id}</div>
+                            <div class="username">用户名：${u.username}</div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById("list").innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById("list").innerHTML =
+                    "<div class='empty'>加载失败</div>";
+            });
+    }
+</script>
+
+</body>
+</html>

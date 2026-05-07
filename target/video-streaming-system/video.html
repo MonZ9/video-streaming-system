@@ -26,7 +26,11 @@
 
   <h2 id="title">加载中...</h2>
 
-  <p id="author" class="author">作者：加载中...</p>
+  <p id="author" class="author">
+    作者：<span id="authorName">加载中...</span>
+    <button id="followBtn" onclick="toggleFollow()">关注</button>
+    <span id="followerCount">0</span>
+  </p>
 
   <video id="videoPlayer" controls>
     您的浏览器不支持 video 标签
@@ -65,6 +69,7 @@
 <script>
   let videoId = null;
   let VIDEO_LIKED = false;  // 用来记录当前用户是否已经点赞
+  let FOLLOWED = false;
 
   function initPage() {
     const params = new URLSearchParams(window.location.search);
@@ -89,26 +94,32 @@
                 alert(data.message || "视频不存在");
                 document.getElementById("title").innerText = "加载失败";
                 document.getElementById("desc").innerText = "";
-                document.getElementById("author").innerText = "";
+                document.getElementById("authorName").innerText = "";
+                document.getElementById("followerCount").innerText = "0";
                 return;
               }
 
               let video = data.data;
               CURRENT_VIDEO_USER_ID = video.userId;
 
+              // 更新视频信息
               document.getElementById("title").innerText = video.title || "无标题";
-              document.getElementById("author").innerText = "作者：" + (video.authorName || "未知作者");
+              document.getElementById("authorName").innerText = video.authorName || "未知作者";
               document.getElementById("desc").innerText = video.description || "无描述";
               document.getElementById("videoPlayer").src = video.url || "";
 
               // ===== 点赞数 =====
               document.getElementById("videoLikeCount").innerText = video.likeCount || 0;
 
-              // 初始化点赞按钮文字
-              // ⭐⭐⭐ 关键：初始化点赞状态（推荐）
+              // 初始化点赞按钮
               VIDEO_LIKED = video.liked || false;
+              updateLikeBtn();
 
-              updateLikeBtn(); // 刷新按钮
+              // ===== 关注按钮 =====
+              FOLLOWED = video.followed || false;
+              document.getElementById("followerCount").innerText = video.followerCount || 0;
+              updateFollowBtn();
+
             })
             .catch(err => {
               console.error("video load error:", err);
@@ -235,6 +246,37 @@
       btn.innerText = "❤️ 已点赞（点击取消）";
     } else {
       btn.innerText = "👍 点赞";
+    }
+  }
+
+  function toggleFollow() {
+
+    const targetId = CURRENT_VIDEO_USER_ID;
+
+    request(`${BASE}/api/follow/toggleFollow?userId=${targetId}`)
+            .then(res => {
+
+              if (!res.success) {
+                alert(res.message);
+                return;
+              }
+
+              FOLLOWED = res.followed;
+
+              document.getElementById("followerCount").innerText = res.followerCount;
+
+              updateFollowBtn();
+            });
+  }
+
+  function updateFollowBtn() {
+
+    const btn = document.getElementById("followBtn");
+
+    if (FOLLOWED) {
+      btn.innerText = "已关注（点击取消）";
+    } else {
+      btn.innerText = "关注";
     }
   }
 
