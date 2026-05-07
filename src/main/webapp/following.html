@@ -83,6 +83,7 @@
           <div class="user-card">
             <div class="user-id">ID：${u.id}</div>
             <div class="username">用户名：${u.username}</div>
+            <button onclick="goToProfile(${u.id})">查看主页</button>
             <button onclick="toggleFollow(${u.id})">取消关注</button>
         </div>
                     `;
@@ -108,6 +109,10 @@
                 loadFollowing(); // 刷新列表
             })
             .catch(() => alert("操作失败"));
+    }
+
+    function goToProfile(userId) {
+        window.location.href = `user_profile.html?userId=${userId}`;
     }
 
 

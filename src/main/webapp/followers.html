@@ -83,6 +83,7 @@
                         <div class="user-card">
                             <div class="user-id">ID：${u.id}</div>
                             <div class="username">用户名：${u.username}</div>
+                            <button onclick="goToProfile(${u.id})">查看主页</button>
                         </div>
                     `;
                 });
@@ -93,6 +94,10 @@
                 document.getElementById("list").innerHTML =
                     "<div class='empty'>加载失败</div>";
             });
+    }
+
+    function goToProfile(userId) {
+        window.location.href = `user_profile.html?userId=${userId}`;
     }
 </script>
 

@@ -204,12 +204,44 @@ public class UserController {
 
         String bio = req.getParameter("bio");
 
-        // ⭐⭐⭐ 关键改这里
+        // 改变判定
         boolean success = userService.updateBio(user.getId(), bio);
 
         res.put("success", success);
         res.put("message", success ? "修改成功" : "修改失败");
 
+        resp.getWriter().write(JSON.toJSONString(res));
+    }
+
+    // ================= 查看他人简介 =================
+    public void viewProfile(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        resp.setContentType("application/json;charset=UTF-8");
+        Map<String, Object> res = new HashMap<>();
+
+        try {
+            int userId = Integer.parseInt(req.getParameter("userId"));
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                res.put("success", false);
+                res.put("message", "用户不存在");
+                resp.getWriter().write(JSON.toJSONString(res));
+                return;
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", user.getId());
+            data.put("username", user.getUsername());
+            data.put("bio", user.getBio());
+            int roleId = userService.getPrimaryRoleId(user.getId());
+            data.put("roleId", roleId);
+
+            res.put("success", true);
+            res.put("data", data);
+        } catch (Exception e) {
+            LogUtil.error("viewProfile 异常", e);
+            res.put("success", false);
+            res.put("message", "服务器异常");
+        }
         resp.getWriter().write(JSON.toJSONString(res));
     }
 
