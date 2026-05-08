@@ -99,6 +99,9 @@ public class VideoController {
                 videoMap.put("liked", liked);
                 videoMap.put("followed", followed);
                 videoMap.put("followerCount", followerCount);
+                // ⭐ 新增返回标签和分区
+                videoMap.put("tags", video.getTags());
+                videoMap.put("category", video.getCategory());
                 result.put("success", true);
                 result.put("data", videoMap);
             }

@@ -17,6 +17,15 @@
     .comment-user { color: #666; font-size: 13px; margin-bottom: 5px; }
     .sort-box { margin-bottom: 10px; }
     .like-count { color: #ff5555; margin-right: 10px; }
+    .tag {
+      display: inline-block;
+      background: #eee;
+      border-radius: 12px;
+      padding: 2px 10px;
+      margin: 2px;
+      font-size: 13px;
+      color: #333;
+    }
   </style>
 </head>
 
@@ -33,6 +42,7 @@
     <button onclick="goToAuthorProfile()">查看主页</button>
   </p>
 
+  <div id="videoTags" style="margin: 10px 0;"></div>
   <video id="videoPlayer" controls>
     您的浏览器不支持 video 标签
   </video>
@@ -107,6 +117,15 @@
               document.getElementById("title").innerText = video.title || "无标题";
               document.getElementById("authorName").innerText = video.authorName || "未知作者";
               document.getElementById("desc").innerText = video.description || "无描述";
+
+              const tagsContainer = document.getElementById("videoTags");
+              if (video.tags) {
+                const tagList = video.tags.split(',').filter(t => t.trim() !== '');
+                tagsContainer.innerHTML = tagList.map(t => `<span class="tag">${t.trim()}</span>`).join(' ');
+              } else {
+                tagsContainer.innerHTML = '';
+              }
+
               document.getElementById("videoPlayer").src = video.url || "";
 
               // ===== 点赞数 =====
