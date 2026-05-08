@@ -119,4 +119,16 @@ public class VideoService {
     public boolean isVideoLiked(int userId, int videoId) {
         return likeService.isVideoLiked(userId, videoId);
     }
+
+    public List<Video> getVideosByCategory(String category) {
+        return videoDao.findByCategory(category);
+    }
+
+    public List<String> getAllTags() {
+        return videoDao.getAllTags();
+    }
+
+    public List<Video> getVideosByTags(List<String> tags) {
+        return videoDao.findByTags(tags);
+    }
 }

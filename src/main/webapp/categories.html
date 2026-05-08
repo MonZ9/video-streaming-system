@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>选择标签分区</title></head>
+<body onload="loadAllTags()">
+<h2>选择标签（可多选）</h2>
+<div id="tagCheckboxes"></div>
+<button onclick="applyTags()">确定</button>
+<button onclick="history.back()">返回</button>
+
+<script src="js/api.js"></script>
+<script>
+    function loadAllTags() {
+        request(`${BASE}/api/video/getAllTags`)
+            .then(res => {
+                if (res.success) {
+                    let html = '';
+                    res.data.forEach(tag => {
+                        html += `<label><input type="checkbox" value="${tag}"> ${tag}</label><br>`;
+                    });
+                    document.getElementById("tagCheckboxes").innerHTML = html || '暂无可选标签';
+                }
+            });
+    }
+
+    function applyTags() {
+        const checked = document.querySelectorAll('#tagCheckboxes input[type="checkbox"]:checked');
+        let tags = [];
+        checked.forEach(cb => tags.push(cb.value));
+        if (tags.length === 0) {
+            alert('请至少选择一个标签');
+            return;
+        }
+        window.location.href = `home.html?tags=${encodeURIComponent(tags.join(','))}`;
+    }
+</script>
+</body>
+</html>

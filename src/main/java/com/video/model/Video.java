@@ -11,6 +11,9 @@ public class Video {
     private int userId;
     private Timestamp createdAt;
     private String authorName;
+    //视频分区
+    private String category;
+    private String tags;
 
     // ===== Getter & Setter =====
     public int getId() {
@@ -69,6 +72,22 @@ public class Video {
         this.authorName = authorName;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
     // ===== toString（建议也加上 authorName 方便调试）=====
     @Override
     public String toString() {
@@ -80,6 +99,8 @@ public class Video {
                 ", userId=" + userId +
                 ", createdAt=" + createdAt +
                 ", authorName='" + authorName + '\'' +
+                ", category='" + category + '\'' +
+                ", tags='" + tags + '\'' +
                 '}';
     }
 }
