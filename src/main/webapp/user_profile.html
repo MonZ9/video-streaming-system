@@ -17,6 +17,11 @@
     <div class="item">用户名：<span id="username"></span></div>
     <div class="item">角色ID：<span id="roleId"></span></div>
     <div class="item">个人简介：<span id="bio"></span></div>
+    <!-- 用户动态 -->
+    <div class="item">
+        <h3>他的动态</h3>
+        <div id="postList">加载中...</div>
+    </div>
     <div class="item">
         <button id="followBtn" style="display:none;" onclick="toggleFollow()">关注</button>
     </div>
@@ -46,6 +51,7 @@
                 document.getElementById("username").innerText = u.username;
                 document.getElementById("roleId").innerText = u.roleId;
                 document.getElementById("bio").innerText = u.bio || "无";
+                loadPosts(currentProfileUserId);
 
                 // 处理关注按钮
                 isFollowed = u.isFollowed;
@@ -85,6 +91,32 @@
             })
             .catch(() => alert("操作失败"));
     }
+
+    function loadPosts(userId) {
+        request(`${BASE}/api/post/list?userId=${userId}`)
+            .then(res => {
+                if (!res.success) {
+                    document.getElementById("postList").innerHTML = "<p>加载失败</p>";
+                    return;
+                }
+                const posts = res.data;
+                let html = '';
+                if (!posts || posts.length === 0) {
+                    html = '<p>暂无动态</p>';
+                } else {
+                    posts.forEach(p => {
+                        html += `
+                        <div class="post-item" style="border-bottom:1px solid #eee; padding:8px 0;">
+                            <p style="margin:0;">${p.content}</p>
+                            <small style="color:#999;">${new Date(p.createdAt).toLocaleString()}</small>
+                        </div>
+                    `;
+                    });
+                }
+                document.getElementById("postList").innerHTML = html;
+            });
+    }
+
 </script>
 </body>
 </html>

@@ -3,36 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>个人主页</title>
-
   <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-    }
-
-    .box {
-      width: 400px;
-      margin: 50px auto;
-      border: 1px solid #ccc;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: left;
-    }
-
-    .item {
-      margin: 10px 0;
-    }
-
-    textarea {
-      width: 100%;
-      height: 80px;
-    }
-
-    button {
-      margin-top: 10px;
-      padding: 6px 12px;
-      cursor: pointer;
-    }
+    body { font-family: Arial; text-align: center; }
+    .box { width: 400px; margin: 50px auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; text-align: left; }
+    .item { margin: 10px 0; }
+    textarea { width: 100%; height: 80px; }
+    button { margin-top: 10px; padding: 6px 12px; cursor: pointer; }
   </style>
 </head>
 
@@ -53,15 +29,28 @@
 
   <button onclick="saveBio()">保存修改</button>
 
+  <!-- 发布动态 -->
+  <div class="item">
+    <textarea id="postContent" placeholder="分享新鲜事..."></textarea>
+    <button onclick="publishPost()">发布动态</button>
+  </div>
+
+  <!-- 我的动态 -->
+  <div class="item">
+    <h3>我的动态</h3>
+    <div id="postList"></div>
+  </div>
+
 </div>
 
 <script src="js/api.js"></script>
 
 <script>
+  // 保存当前用户 ID
+  let CURRENT_PROFILE_ID = null;
+
   function loadProfile() {
-
     const token = localStorage.getItem("token");
-
     if (!token) {
       alert("请先登录！");
       window.location.href = "login.html";
@@ -70,37 +59,90 @@
 
     request(`${BASE}/api/user/getProfile`)
             .then(res => {
-
               if (!res.success) {
                 alert(res.message);
                 return;
               }
 
               const u = res.data;
-
               document.getElementById("uid").innerText = u.id;
               document.getElementById("username").innerText = u.username;
               document.getElementById("roleId").innerText = u.roleId;
               document.getElementById("bio").value = u.bio || "";
-
+              CURRENT_PROFILE_ID = u.id;
+              loadPosts(u.id);
             });
   }
 
   function saveBio() {
     const bio = document.getElementById("bio").value;
-
     request(`${BASE}/api/user/updateBio`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `bio=${encodeURIComponent(bio)}`
     })
             .then(res => {
               alert(res.message);
-
               if (res.success) {
-                loadProfile(); // ⭐ 重新加载
+                loadProfile();
+              }
+            });
+  }
+
+  function loadPosts(userId) {
+    request(`${BASE}/api/post/list?userId=${userId}`)
+            .then(res => {
+              if (!res.success) {
+                document.getElementById("postList").innerHTML = "<p>加载失败</p>";
+                return;
+              }
+              const posts = res.data;
+              let html = '';
+              if (!posts || posts.length === 0) {
+                html = '<p>暂无动态</p>';
+              } else {
+                posts.forEach(p => {
+                  html += `
+              <div class="post-item" style="border-bottom:1px solid #eee; padding:8px 0;">
+                <p style="margin:0;">${p.content}</p>
+                <small style="color:#999;">
+                  ${new Date(p.createdAt).toLocaleString()}
+                  <button onclick="deletePost(${p.id})" style="color:red; margin-left:10px;">删除</button>
+                </small>
+              </div>
+            `;
+                });
+              }
+              document.getElementById("postList").innerHTML = html;
+            });
+  }
+
+  function publishPost() {
+    const content = document.getElementById("postContent").value.trim();
+    if (!content) {
+      alert("内容不能为空");
+      return;
+    }
+    request(`${BASE}/api/post/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `content=${encodeURIComponent(content)}`
+    }).then(res => {
+      alert(res.message || "操作完成");
+      if (res.success) {
+        document.getElementById("postContent").value = '';
+        loadPosts(CURRENT_PROFILE_ID);
+      }
+    });
+  }
+
+  function deletePost(postId) {
+    if (!confirm("确定删除这条动态吗？")) return;
+    request(`${BASE}/api/post/delete?id=${postId}`)
+            .then(res => {
+              alert(res.message || "操作完成");
+              if (res.success) {
+                loadPosts(CURRENT_PROFILE_ID);
               }
             });
   }
