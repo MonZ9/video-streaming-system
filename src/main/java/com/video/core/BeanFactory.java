@@ -1,4 +1,3 @@
-// com/video/core/BeanFactory.java
 package com.video.core;
 
 import com.video.annotation.Bean;
@@ -14,29 +13,38 @@ public class BeanFactory {
     private static final Map<Class<?>, Object> beans = new HashMap<>();
 
     /**
-     * 初始化容器：扫描包，创建所有带 @Bean 注解的类，完成依赖注入
+     * 自动扫描 com.video.dao 和 com.video.service 下的 @Bean 类，并完成依赖注入
      */
-    public static void init(String basePackage) {
+    public static void init() {
         try {
-            List<Class<?>> classes = ClassScanner.scan(basePackage);
-            // 第一轮：实例化所有 Bean（此时未注入）
+            // 1. 扫描所有相关包
+            List<Class<?>> classes = ClassScanner.scan("com.video.dao", "com.video.service");
+
+            // 2. 先实例化所有标记了 @Bean 的类（此时无注入）
             for (Class<?> clazz : classes) {
                 if (clazz.isAnnotationPresent(Bean.class)) {
+                    // 跳过抽象类（如 BaseDao）
+                    if (java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
+                        continue;
+                    }
                     Object instance = clazz.getDeclaredConstructor().newInstance();
                     beans.put(clazz, instance);
                 }
             }
-            // 第二轮：注入依赖
-            for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
-                injectDependencies(entry.getValue());
+
+            // 3. 注入所有 @Inject 字段
+            for (Object bean : beans.values()) {
+                injectDependencies(bean);
             }
+
+            System.out.println("IoC 容器自动扫描完成，共注册 " + beans.size() + " 个 Bean");
         } catch (Exception e) {
             throw new RuntimeException("IoC 容器初始化失败", e);
         }
     }
 
     /**
-     * 为对象注入带 @Inject 的字段
+     * 为单个 Bean 注入所有标记了 @Inject 的字段
      */
     private static void injectDependencies(Object bean) throws Exception {
         Field[] fields = bean.getClass().getDeclaredFields();
@@ -46,25 +54,17 @@ public class BeanFactory {
                 Class<?> fieldType = field.getType();
                 Object dependency = beans.get(fieldType);
                 if (dependency == null) {
-                    throw new RuntimeException("未找到类型为 " + fieldType.getName() + " 的 Bean");
+                    // 如果是接口或抽象类，这里可能找不到，不过我们的依赖具体类都在同一个容器中
+                    throw new RuntimeException("Bean " + bean.getClass().getSimpleName() +
+                            " 需要 " + fieldType.getSimpleName() + "，但未找到对应的 @Bean");
                 }
                 field.set(bean, dependency);
             }
         }
     }
 
-    /**
-     * 获取 Bean 实例
-     */
     @SuppressWarnings("unchecked")
     public static <T> T getBean(Class<T> clazz) {
         return (T) beans.get(clazz);
-    }
-
-    /**
-     * 获取所有 Bean 的 Map（用于调试）
-     */
-    public static Map<Class<?>, Object> getAllBeans() {
-        return beans;
     }
 }

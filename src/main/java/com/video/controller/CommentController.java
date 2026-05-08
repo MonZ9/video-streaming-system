@@ -1,6 +1,7 @@
 package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.video.core.BeanFactory;
 import com.video.model.User;
 import com.video.service.CommentService;
 import com.video.service.LikeService;
@@ -15,9 +16,9 @@ import java.util.Map;
 
 public class CommentController {
 
-    private CommentService commentService = new CommentService();
-    private UserService userService = new UserService();
-    private LikeService likeService = new LikeService();
+    private CommentService commentService = BeanFactory.getBean(CommentService.class);
+    private UserService userService = BeanFactory.getBean(UserService.class);
+    private LikeService likeService = BeanFactory.getBean(LikeService.class);
 
     // ================= 获取当前登录用户 =================
     private User getLoginUser(HttpServletRequest req) {
@@ -86,7 +87,7 @@ public class CommentController {
 
         try {
             String videoIdStr = req.getParameter("videoId");
-            String sort = req.getParameter("sort"); // ⭐ 新增
+            String sort = req.getParameter("sort");
 
             if (videoIdStr == null) {
                 result.put("success", false);
@@ -101,9 +102,8 @@ public class CommentController {
 
             List<Map<String, Object>> comments;
 
-            // ⭐ 核心切换逻辑（你刚问的插入位置就在这里）
             if ("hot".equals(sort)) {
-                comments = commentService.getHotCommentsByVideoId(videoId,user);
+                comments = commentService.getHotCommentsByVideoId(videoId, user);
             } else {
                 comments = commentService.getCommentsByVideoId(videoId, user);
             }

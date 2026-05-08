@@ -1,6 +1,7 @@
 package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.video.core.BeanFactory;
 import com.video.model.User;
 import com.video.service.FollowService;
 import com.video.util.AuthUtil;
@@ -13,7 +14,7 @@ import java.util.Map;
 
 public class FollowController {
 
-    private FollowService followService = new FollowService();
+    private FollowService followService = BeanFactory.getBean(FollowService.class);
 
     // ================= 关注/取消 =================
     public void toggleFollow(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -86,5 +87,4 @@ public class FollowController {
 
         resp.getWriter().write(JSON.toJSONString(res));
     }
-
 }

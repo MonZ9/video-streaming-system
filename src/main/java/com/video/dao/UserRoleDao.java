@@ -1,10 +1,12 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.util.DbUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
+@Bean
 public class UserRoleDao {
 
     public boolean addUserRole(int userId, int roleId) {

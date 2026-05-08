@@ -1,6 +1,7 @@
 package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.video.core.BeanFactory;
 import com.video.model.User;
 import com.video.service.AdminService;
 import com.video.util.AuthUtil;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 public class AdminController {
 
-    private AdminService service = new AdminService();
+    private AdminService service = BeanFactory.getBean(AdminService.class);
 
     // ================= 用户申请 =================
     public void apply(HttpServletRequest req, HttpServletResponse resp) throws Exception {

@@ -1,6 +1,7 @@
 package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.video.core.BeanFactory;
 import com.video.model.User;
 import com.video.service.LikeService;
 import com.video.util.AuthUtil;
@@ -11,7 +12,7 @@ import java.util.Map;
 
 public class LikeController {
 
-    private LikeService likeService = new LikeService();
+    private LikeService likeService = BeanFactory.getBean(LikeService.class);
 
     // ================= 视频点赞/取消 =================
     public void toggleVideoLike(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -33,8 +34,8 @@ public class LikeController {
         int likeCount = likeService.getVideoLikeCount(videoId);
 
         res.put("success", true);
-        res.put("liked", liked);         // true = 点赞成功 / false = 取消点赞
-        res.put("likeCount", likeCount); // 返回最新点赞数
+        res.put("liked", liked);
+        res.put("likeCount", likeCount);
         res.put("message", liked ? "点赞成功" : "已取消点赞");
 
         resp.getWriter().write(JSON.toJSONString(res));

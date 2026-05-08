@@ -1,5 +1,6 @@
 package com.video.util;
 
+import com.video.core.BeanFactory;
 import com.video.service.UserService;
 import com.video.model.User;
 
@@ -7,35 +8,30 @@ import javax.servlet.http.HttpServletRequest;
 
 public class AuthUtil {
 
-    private static final UserService userService = new UserService();
+    // ❌ 删除这一行
+    // private static final UserService userService = new UserService();
 
     // ================= 获取登录用户 =================
     public static User getLoginUser(HttpServletRequest req) {
-
         String token = getToken(req);
-
         if (token == null || token.trim().isEmpty()) {
             return null;
         }
-
+        // ✅ 从 IoC 容器获取（容器在 DispatcherServlet.init 时已初始化）
+        UserService userService = BeanFactory.getBean(UserService.class);
         Integer userId = userService.getUserIdByToken(token);
         if (userId == null) return null;
-
         return userService.getUserById(userId);
     }
 
     // ================= 统一获取 token（核心） =================
     public static String getToken(HttpServletRequest req) {
-
         // 1️⃣ 优先 Authorization（标准方式）
         String auth = req.getHeader("Authorization");
-
         if (auth != null && !auth.trim().isEmpty()) {
-
             if (auth.startsWith("Bearer ")) {
                 return auth.substring(7).trim();
             }
-
             return auth.trim();
         }
 

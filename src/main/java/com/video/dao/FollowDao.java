@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.model.User;
 import com.video.util.DbUtil;
 import java.sql.Connection;
@@ -10,6 +11,7 @@ import java.util.List;
 
 import static com.video.util.DbUtil.getConnection;
 
+@Bean
 public class FollowDao {
 
     // ================= 关注 =================

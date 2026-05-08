@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
 
@@ -9,6 +10,7 @@ import java.sql.ResultSet;
 
 import static com.video.util.DbUtil.getConnection;
 
+@Bean
 public class LikeDao {
 
     // ================= 点赞 =================

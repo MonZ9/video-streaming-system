@@ -1,25 +1,26 @@
 package com.video.service;
 
+import com.video.annotation.Bean;
+import com.video.annotation.Inject;
 import com.video.dao.FollowDao;
 import com.video.model.User;
 
 import java.util.List;
 
+@Bean
 public class FollowService {
 
-    private FollowDao followDao = new FollowDao();
+    @Inject
+    private FollowDao followDao;
 
-    // ================= 关注/取消 =================
     public boolean toggleFollow(int followerId, int followingId) {
-
         boolean followed = followDao.isFollowed(followerId, followingId);
-
         if (followed) {
             followDao.unfollow(followerId, followingId);
-            return false; // 已取消
+            return false;
         } else {
             followDao.follow(followerId, followingId);
-            return true;  // 已关注
+            return true;
         }
     }
 
@@ -35,12 +36,10 @@ public class FollowService {
         return followDao.isFollowed(followerId, followingId);
     }
 
-    // ================= 获取粉丝 =================
     public List<User> getFollowers(int userId) {
         return followDao.getFollowers(userId);
     }
 
-    // ================= 获取关注 =================
     public List<User> getFollowing(int userId) {
         return followDao.getFollowing(userId);
     }

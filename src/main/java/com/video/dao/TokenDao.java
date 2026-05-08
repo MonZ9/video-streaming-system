@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
 
@@ -7,6 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+@Bean
 public class TokenDao {
 
     // 保存 token

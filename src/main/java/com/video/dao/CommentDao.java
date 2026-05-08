@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.model.Comment;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
@@ -9,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
+@Bean
 public class CommentDao {
 
     // ================= 添加评论 =================

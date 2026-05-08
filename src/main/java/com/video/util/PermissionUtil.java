@@ -1,5 +1,6 @@
 package com.video.util;
 
+import com.video.core.BeanFactory;
 import com.video.model.User;
 import com.video.service.UserService;
 
@@ -8,13 +9,18 @@ import com.video.service.UserService;
  */
 public class PermissionUtil {
 
-    private static final UserService userService = new UserService();
+    // ❌ 删除这一行
+    // private static final UserService userService = new UserService();
+
+    // 获取 UserService 的辅助方法，避免每次调用时重复写
+    private static UserService getUserService() {
+        return BeanFactory.getBean(UserService.class);
+    }
 
     public static boolean hasPermission(User user, String permission) {
-
         if (user == null) return false;
 
-        int roleId = userService.getPrimaryRoleId(user.getId());
+        int roleId = getUserService().getPrimaryRoleId(user.getId());
 
         // 管理员：全部权限
         if (roleId == 1) {
@@ -25,25 +31,18 @@ public class PermissionUtil {
             case "video:upload":
             case "comment:add":
                 return true;
-
             default:
                 return false;
         }
     }
 
-    /**
-     * 是否管理员（推荐新代码使用）
-     */
     public static boolean isAdmin(User user) {
         if (user == null) return false;
-        return userService.getPrimaryRoleId(user.getId()) == 1;
+        return getUserService().getPrimaryRoleId(user.getId()) == 1;
     }
 
-    /**
-     * 通用角色判断
-     */
     public static boolean hasRole(User user, int roleId) {
         if (user == null) return false;
-        return userService.hasRole(user.getId(), roleId);
+        return getUserService().hasRole(user.getId(), roleId);
     }
 }

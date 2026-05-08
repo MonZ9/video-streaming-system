@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.model.Video;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Bean
 public class VideoDao extends BaseDao<Video> {
 
     public VideoDao() {

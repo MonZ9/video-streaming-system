@@ -1,5 +1,6 @@
 package com.video.dao;
 
+import com.video.annotation.Bean;
 import com.video.model.User;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
@@ -8,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+@Bean
 public class UserDao extends BaseDao<User> {
 
     public UserDao() {
