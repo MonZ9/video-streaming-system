@@ -121,6 +121,12 @@
               document.getElementById("followerCount").innerText = video.followerCount || 0;
               updateFollowBtn();
 
+              if (CURRENT_USER_ID && CURRENT_VIDEO_USER_ID) {
+                if (Number(CURRENT_USER_ID) === Number(CURRENT_VIDEO_USER_ID)) {
+                  document.getElementById("followBtn").style.display = "none";
+                }
+              }
+
             })
             .catch(err => {
               console.error("video load error:", err);
