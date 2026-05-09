@@ -126,4 +126,48 @@ public class CommentService {
         }
         return list;
     }
+
+    // 放在 CommentService 类中，与原有方法并列
+
+    /**
+     * 为动态添加评论
+     */
+    public boolean addPostComment(int postId, int userId, String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return false;
+        }
+        return commentDao.addComment(postId, "post", userId, content);
+    }
+
+    /**
+     * 获取动态的评论列表（包含点赞数、当前用户是否点赞、是否能删除）
+     */
+    public List<Map<String, Object>> getPostComments(int postId, User user) {
+        List<Map<String, Object>> list = commentDao.getCommentsByPostId(postId);
+        if (list == null || list.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 动态的评论没有对应的视频作者，所以 canDelete 仅根据评论作者和管理员权限判断
+        for (Map<String, Object> map : list) {
+            int commentUserId = (int) map.get("userId");
+            int commentId = (int) map.get("id");
+
+            boolean isCommentOwner = user != null && commentUserId == user.getId();
+            boolean hasPermission = user != null && PermissionUtil.hasPermission(user, "comment:delete");
+            map.put("canDelete", isCommentOwner || hasPermission);
+
+            // 点赞数
+            int likeCount = likeService.getCommentLikeCount(commentId);
+            map.put("likeCount", likeCount);
+
+            // 当前用户是否已点赞
+            boolean liked = false;
+            if (user != null) {
+                liked = likeService.isCommentLiked(user.getId(), commentId);
+            }
+            map.put("liked", liked);
+        }
+        return list;
+    }
 }

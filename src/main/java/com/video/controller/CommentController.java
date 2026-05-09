@@ -2,12 +2,15 @@ package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.video.core.BeanFactory;
+import com.video.exception.AuthException;
+import com.video.exception.BusinessException;
 import com.video.model.User;
 import com.video.service.CommentService;
 import com.video.service.LikeService;
 import com.video.service.UserService;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
+import com.video.util.Result;
 
 import javax.servlet.http.*;
 import java.util.HashMap;
@@ -152,4 +155,53 @@ public class CommentController {
 
         resp.getWriter().write(JSON.toJSONString(result));
     }
+
+    // 放在 CommentController 类中，与原有方法并列
+
+    /**
+     * 为动态添加评论
+     * 请求参数：postId, content
+     */
+    public void addPostComment(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        req.setCharacterEncoding("UTF-8");
+        resp.setContentType("application/json;charset=UTF-8");
+
+        User user = getLoginUser(req);
+        if (user == null) {
+            throw new AuthException();   // 需要先登录
+        }
+
+        String postIdStr = req.getParameter("postId");
+        String content = req.getParameter("content");
+        if (postIdStr == null || content == null || content.trim().isEmpty()) {
+            throw new BusinessException(400, "参数不完整");
+        }
+
+        int postId = Integer.parseInt(postIdStr);
+        boolean success = commentService.addPostComment(postId, user.getId(), content.trim());
+
+        Map<String, Object> result = Result.ok(success ? "评论成功" : "评论失败", null);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+    /**
+     * 获取动态的评论列表
+     * 请求参数：postId
+     */
+    public void getPostComments(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        resp.setContentType("application/json;charset=UTF-8");
+
+        String postIdStr = req.getParameter("postId");
+        if (postIdStr == null) {
+            throw new BusinessException(400, "缺少 postId");
+        }
+
+        int postId = Integer.parseInt(postIdStr);
+        User user = getLoginUser(req);   // 允许未登录，仍可查看评论，但 canDelete 等为 false
+
+        List<Map<String, Object>> comments = commentService.getPostComments(postId, user);
+        Map<String, Object> result = Result.ok(comments);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
 }

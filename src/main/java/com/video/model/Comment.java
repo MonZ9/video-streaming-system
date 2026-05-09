@@ -9,6 +9,9 @@ public class Comment {
     private int userId;
     private String content;
     private Timestamp createdAt;
+    private String targetType;
+    private int    targetId;
+
 
     // ================= Getter / Setter =================
 
@@ -51,4 +54,21 @@ public class Comment {
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
     }
+
+    public String getTargetType() {
+        return targetType;
+    }
+
+    public void setTargetType(String targetType) {
+        this.targetType = targetType;
+    }
+
+    public int getTargetId() {
+        return targetId;
+    }
+
+    public void setTargetId(int targetId) {
+        this.targetId = targetId;
+    }
+
 }

@@ -8,6 +8,7 @@
         .box { width: 400px; margin: 50px auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; text-align: left; }
         .item { margin: 10px 0; }
         #followBtn { padding: 8px 16px; cursor: pointer; }
+        .comment-input { width: 200px; height: 24px; margin-right: 5px; }
     </style>
 </head>
 <body onload="loadUserProfile()">
@@ -108,12 +109,70 @@
                         html += `
                         <div class="post-item" style="border-bottom:1px solid #eee; padding:8px 0;">
                             <p style="margin:0;">${p.content}</p>
-                            <small style="color:#999;">${new Date(p.createdAt).toLocaleString()}</small>
+                            <small style="color:#999;">
+                                ${new Date(p.createdAt).toLocaleString()}
+                                <button onclick="toggleCommentBox(${p.id})" style="margin-left:10px;">评论</button>
+                            </small>
+                            <div id="commentBox-${p.id}" style="display:none; margin-top:5px;">
+                                <input type="text" id="commentInput-${p.id}" class="comment-input" placeholder="说点什么...">
+                                <button onclick="submitPostComment(${p.id})">发送</button>
+                                <div id="postCommentList-${p.id}" style="margin-top:5px;"></div>
+                            </div>
                         </div>
                     `;
                     });
                 }
                 document.getElementById("postList").innerHTML = html;
+            });
+    }
+
+    function toggleCommentBox(postId) {
+        const box = document.getElementById(`commentBox-${postId}`);
+        if (box.style.display === 'none') {
+            box.style.display = 'block';
+            loadPostComments(postId);
+        } else {
+            box.style.display = 'none';
+        }
+    }
+
+    function loadPostComments(postId) {
+        request(`${BASE}/api/comment/getPostComments?postId=${postId}`)
+            .then(res => {
+                if (!res.success) return;
+                const comments = res.data;
+                let html = '';
+                if (!comments || comments.length === 0) {
+                    html = '<p style="color:#999;">暂无评论</p>';
+                } else {
+                    comments.forEach(c => {
+                        html += `
+                            <div style="font-size:13px; border-bottom:1px dotted #ddd; padding:3px 0;">
+                                <b>${c.username || ('用户' + c.userId)}</b>: ${c.content}
+                                <span style="color:#999; font-size:11px;">${new Date(c.createdAt).toLocaleString()}</span>
+                            </div>
+                        `;
+                    });
+                }
+                document.getElementById(`postCommentList-${postId}`).innerHTML = html;
+            });
+    }
+
+    function submitPostComment(postId) {
+        const input = document.getElementById(`commentInput-${postId}`);
+        const content = input.value.trim();
+        if (!content) {
+            alert("请输入内容");
+            return;
+        }
+        request(`${BASE}/api/comment/addPostComment?postId=${postId}&content=${encodeURIComponent(content)}`)
+            .then(res => {
+                if (res.success) {
+                    input.value = '';
+                    loadPostComments(postId);
+                } else {
+                    alert(res.message || "评论失败");
+                }
             });
     }
 
