@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.video.annotation.Bean;
 import com.video.annotation.Inject;
 import com.video.dao.VideoDao;
+import com.video.model.User;
 import com.video.model.Video;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
@@ -24,12 +25,27 @@ public class VideoService {
     @Inject
     private LikeService likeService;
 
+    @Inject
+    private UserService userService;          // 新增：用于获取作者信息
+
+    @Inject
+    private FeedPushService feedPushService;  // 新增：用于推送视频到粉丝收件箱
+
     public boolean addVideo(Video video) {
         boolean success = videoDao.save(video);
         if (success) {
+            // 补全作者名（数据库不存，但推送时需要）
+            User author = userService.getUserById(video.getUserId());
+            if (author != null) {
+                video.setAuthorName(author.getUsername());
+            }
+            // 原有缓存逻辑
             RedisUtil.setex("video:" + video.getId(), 300, JSON.toJSONString(video));
             RedisUtil.del("video:list");
             LogUtil.info("新增视频并写入Redis缓存: " + video.getTitle());
+
+            // 推送到粉丝的 Redis 收件箱
+            feedPushService.pushVideo(video);
         } else {
             LogUtil.warn("新增视频失败: " + video.getTitle());
         }

@@ -122,4 +122,43 @@ public class PostDao extends BaseDao<Post> {
         return null;
     }
 
+    public List<Post> findByUserIdsAndTime(List<Integer> userIds, String lastTime, int limit) {
+        if (userIds.isEmpty()) return new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT p.*, u.username AS authorName FROM posts p LEFT JOIN users u ON p.user_id = u.id WHERE p.user_id IN (");
+        for (int i = 0; i < userIds.size(); i++) {
+            sql.append(i > 0 ? ",?" : "?");
+        }
+        sql.append(")");
+        if (lastTime != null && !lastTime.isEmpty()) {
+            sql.append(" AND p.created_at < ?");
+        }
+        sql.append(" ORDER BY p.created_at DESC LIMIT ?");
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            for (int uid : userIds) {
+                ps.setInt(idx++, uid);
+            }
+            if (lastTime != null && !lastTime.isEmpty()) {
+                ps.setString(idx++, lastTime);
+            }
+            ps.setInt(idx, limit);
+            ResultSet rs = ps.executeQuery();
+            List<Post> list = new ArrayList<>();
+            while (rs.next()) {
+                Post p = new Post();
+                p.setId(rs.getInt("id"));
+                p.setContent(rs.getString("content"));
+                p.setUserId(rs.getInt("user_id"));
+                p.setCreatedAt(rs.getTimestamp("created_at"));
+                p.setAuthorName(rs.getString("authorName"));
+                list.add(p);
+            }
+            return list;
+        } catch (Exception e) {
+            LogUtil.error("查询动态Feed失败", e);
+            return new ArrayList<>();
+        }
+    }
+
 }

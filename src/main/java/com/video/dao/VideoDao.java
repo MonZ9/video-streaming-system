@@ -247,4 +247,46 @@ public class VideoDao extends BaseDao<Video> {
         }
         return list;
     }
+
+    public List<Video> findByUserIdsAndTime(List<Integer> userIds, String lastTime, int limit) {
+        if (userIds.isEmpty()) return new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT v.*, u.username AS authorName FROM videos v LEFT JOIN users u ON v.user_id = u.id WHERE v.user_id IN (");
+        for (int i = 0; i < userIds.size(); i++) {
+            sql.append(i > 0 ? ",?" : "?");
+        }
+        sql.append(")");
+        if (lastTime != null && !lastTime.isEmpty()) {
+            sql.append(" AND v.created_at < ?");
+        }
+        sql.append(" ORDER BY v.created_at DESC LIMIT ?");
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            for (int uid : userIds) {
+                ps.setInt(idx++, uid);
+            }
+            if (lastTime != null && !lastTime.isEmpty()) {
+                ps.setString(idx++, lastTime);
+            }
+            ps.setInt(idx, limit);
+            ResultSet rs = ps.executeQuery();
+            List<Video> list = new ArrayList<>();
+            while (rs.next()) {
+                Video v = new Video();
+                v.setId(rs.getInt("id"));
+                v.setTitle(rs.getString("title"));
+                v.setUrl(rs.getString("url"));
+                v.setDescription(rs.getString("description"));
+                v.setUserId(rs.getInt("user_id"));
+                v.setCreatedAt(rs.getTimestamp("created_at"));
+                v.setAuthorName(rs.getString("authorName"));
+                list.add(v);
+            }
+            return list;
+        } catch (Exception e) {
+            LogUtil.error("查询视频Feed失败", e);
+            return new ArrayList<>();
+        }
+    }
+
 }

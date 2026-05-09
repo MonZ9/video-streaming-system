@@ -182,4 +182,20 @@ public class FollowDao {
         return list;
     }
 
+    public List<Integer> getFollowersList(int userId) {
+        List<Integer> list = new ArrayList<>();
+        String sql = "SELECT follower_id FROM follows WHERE following_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(rs.getInt("follower_id"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
 }

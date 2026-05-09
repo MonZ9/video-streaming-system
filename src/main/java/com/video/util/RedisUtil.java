@@ -54,4 +54,18 @@ public class RedisUtil {
             }
         }
     }
+
+    // RedisUtil.java 新增
+    public static void lpush(String key, String value) {
+        try (Jedis jedis = getJedis()) {
+            jedis.lpush(key, value);
+        }
+    }
+
+    public static void ltrim(String key, long start, long end) {
+        try (Jedis jedis = getJedis()) {
+            jedis.ltrim(key, start, end);
+        }
+    }
+
 }

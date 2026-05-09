@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>关注动态</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; }
+    .feed-item { border-bottom: 1px solid #eee; padding: 15px 0; }
+    .feed-item h3 { margin: 0; }
+    .feed-item p { margin: 5px 0; color: #555; }
+    .meta { font-size: 12px; color: #888; }
+    button { padding: 10px 20px; margin-top: 20px; }
+  </style>
+</head>
+<body onload="loadFeed()">
+<h2>关注动态</h2>
+<div id="feedList"></div>
+<div id="loading" style="display:none;">加载中...</div>
+<button id="loadMoreBtn" onclick="loadMore()" style="display:none;">加载更多</button>
+
+<script src="js/api.js"></script>
+<script>
+  let cursor = null;
+  let hasMore = true;
+
+  function loadFeed() {
+    cursor = null;
+    hasMore = true;
+    document.getElementById("feedList").innerHTML = '';
+    fetchFeed();
+  }
+
+  function fetchFeed() {
+    let url = `${BASE}/api/feed/pull?limit=10`;
+    if (cursor) {
+      url += `&lastTime=${encodeURIComponent(cursor)}`;
+    }
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("loadMoreBtn").style.display = "none";
+    request(url)
+            .then(res => {
+              document.getElementById("loading").style.display = "none";
+              if (!res.success) {
+                alert(res.message);
+                return;
+              }
+              const data = res.data;
+              const items = data.items || [];
+              hasMore = data.hasMore;
+              cursor = data.nextCursor;
+              renderItems(items);
+              if (hasMore) {
+                document.getElementById("loadMoreBtn").style.display = "inline-block";
+              }
+            });
+  }
+
+  function renderItems(items) {
+    let html = '';
+    items.forEach(item => {
+      if (item.type === 'video') {
+        html += `
+                <div class="feed-item">
+                    <h3><a href="video.html?id=${item.id}">${item.title}</a></h3>
+                    <p>${item.description || ''}</p>
+                    <div class="meta">作者：${item.authorName} | ${new Date(item.createdAt).toLocaleString()}</div>
+                </div>`;
+      } else if (item.type === 'post') {
+        html += `
+                <div class="feed-item">
+                    <p><a href="post_detail.html?id=${item.id}">${item.content}</a></p>
+                    <div class="meta">作者：${item.authorName} | ${new Date(item.createdAt).toLocaleString()}</div>
+                </div>`;
+      }
+    });
+    document.getElementById("feedList").innerHTML += html;
+  }
+
+  function loadMore() {
+    fetchFeed();
+  }
+</script>
+</body>
+</html>
