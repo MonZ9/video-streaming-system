@@ -109,13 +109,13 @@
                 <small style="color:#999;">
                   ${new Date(p.createdAt).toLocaleString()}
                   <button onclick="deletePost(${p.id})" style="color:red; margin-left:10px;">删除</button>
-                  <button onclick="toggleCommentBox(${p.id})" style="margin-left:10px;">评论</button>
+                  <!-- ⭐ 收藏按钮 -->
+                  <button onclick="togglePostFavorite(${p.id})" id="favBtn-${p.id}" style="margin-left:10px;">
+                    ${p.favorited ? '⭐ 已收藏' : '⭐ 收藏'}
+                  </button>
+                  <!-- 评论按钮等其他按钮保持不变 -->
                 </small>
-                <div id="commentBox-${p.id}" style="display:none; margin-top:5px;">
-                  <input type="text" id="commentInput-${p.id}" class="comment-input" placeholder="说点什么...">
-                  <button onclick="submitPostComment(${p.id})">发送</button>
-                  <div id="postCommentList-${p.id}" style="margin-top:5px;"></div>
-                </div>
+                <!-- 评论区等 -->
               </div>
             `;
                 });
@@ -123,6 +123,7 @@
               document.getElementById("postList").innerHTML = html;
             });
   }
+
 
   function toggleCommentBox(postId) {
     const box = document.getElementById(`commentBox-${postId}`);
@@ -203,6 +204,22 @@
               }
             });
   }
+
+  // ⭐ 动态收藏切换
+  function togglePostFavorite(postId) {
+    request(`${BASE}/api/favorite/toggle?type=post&targetId=${postId}`)
+            .then(res => {
+              if (res.success) {
+                const btn = document.getElementById(`favBtn-${postId}`);
+                if (btn) {
+                  btn.innerText = res.favorited ? '⭐ 已收藏' : '⭐ 收藏';
+                }
+              } else {
+                alert(res.message);
+              }
+            });
+  }
+
 </script>
 
 </body>

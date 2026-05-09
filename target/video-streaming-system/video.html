@@ -53,6 +53,7 @@
   <div style="margin: 10px 0;">
     <button id="likeBtn" onclick="toggleLikeVideo()">👍 点赞</button>
     <span id="videoLikeCount">0</span>
+    <button id="favoriteBtn" onclick="toggleFavorite()">⭐ 收藏</button>
   </div>
 <!--发表评论-->
   <div class="comment-box">
@@ -97,6 +98,9 @@
     });
   }
 
+  // 全局新增收藏状态变量（放在其他全局变量旁边）
+  let VIDEO_FAVORITED = false;
+
   function loadVideoDetail() {
     request(`${BASE}/api/video/getVideo?id=${videoId}`)
             .then(data => {
@@ -118,6 +122,7 @@
               document.getElementById("authorName").innerText = video.authorName || "未知作者";
               document.getElementById("desc").innerText = video.description || "无描述";
 
+              // 标签展示
               const tagsContainer = document.getElementById("videoTags");
               if (video.tags) {
                 const tagList = video.tags.split(',').filter(t => t.trim() !== '');
@@ -130,8 +135,6 @@
 
               // ===== 点赞数 =====
               document.getElementById("videoLikeCount").innerText = video.likeCount || 0;
-
-              // 初始化点赞按钮
               VIDEO_LIKED = video.liked || false;
               updateLikeBtn();
 
@@ -145,6 +148,10 @@
                   document.getElementById("followBtn").style.display = "none";
                 }
               }
+
+              // ===== ⭐ 收藏状态与按钮 =====
+              VIDEO_FAVORITED = video.favorited || false;
+              updateFavoriteBtn();   // 后面定义
 
             })
             .catch(err => {
@@ -311,6 +318,25 @@
       window.location.href = `user_profile.html?userId=${CURRENT_VIDEO_USER_ID}`;
     } else {
       alert("作者信息未加载");
+    }
+  }
+
+  function toggleFavorite() {
+    request(`${BASE}/api/favorite/toggle?type=video&targetId=${videoId}`)
+            .then(res => {
+              if (res.success) {
+                VIDEO_FAVORITED = res.favorited;
+                updateFavoriteBtn();
+              } else {
+                alert(res.message);
+              }
+            });
+  }
+
+  function updateFavoriteBtn() {
+    const btn = document.getElementById("favoriteBtn");
+    if (btn) {
+      btn.innerText = VIDEO_FAVORITED ? "⭐ 已收藏" : "⭐ 收藏";
     }
   }
 

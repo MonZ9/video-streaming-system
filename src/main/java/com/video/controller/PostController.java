@@ -5,18 +5,22 @@ import com.video.core.BeanFactory;
 import com.video.exception.BusinessException;
 import com.video.model.Post;
 import com.video.model.User;
+import com.video.service.FavoriteService;
 import com.video.service.PostService;
 import com.video.util.AuthUtil;
 import com.video.util.Result;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class PostController {
 
     private PostService postService = BeanFactory.getBean(PostService.class);
+    private FavoriteService favoriteService = BeanFactory.getBean(FavoriteService.class);
 
     // 发布动态
     public void create(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -44,9 +48,31 @@ public class PostController {
         }
         int userId = Integer.parseInt(userIdStr);
         List<Post> posts = postService.getPostsByUserId(userId);
-        Map<String, Object> result = Result.ok(posts);
+
+        User currentUser = AuthUtil.getLoginUser(req);
+
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (Post post : posts) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", post.getId());
+            map.put("content", post.getContent());
+            map.put("createdAt", post.getCreatedAt());
+            map.put("userId", post.getUserId());
+            map.put("authorName", post.getAuthorName());
+
+            // ⭐ 判断当前用户是否收藏了该动态
+            boolean favorited = false;
+            if (currentUser != null) {
+                favorited = favoriteService.isFavorited(currentUser.getId(), "post", post.getId());
+            }
+            map.put("favorited", favorited);
+            resultList.add(map);
+        }
+
+        Map<String, Object> result = Result.ok(resultList);
         resp.getWriter().write(JSON.toJSONString(result));
     }
+
 
     //新增删除接口
     public void delete(HttpServletRequest req, HttpServletResponse resp) throws Exception {

@@ -8,6 +8,7 @@ import com.video.model.Video;
 import com.video.service.FollowService;
 import com.video.service.UserService;
 import com.video.service.VideoService;
+import com.video.service.FavoriteService;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
 import com.video.util.PermissionUtil;
@@ -25,6 +26,7 @@ public class VideoController {
     private VideoService videoService = BeanFactory.getBean(VideoService.class);
     private UserService userService = BeanFactory.getBean(UserService.class);
     private FollowService followService = BeanFactory.getBean(FollowService.class);
+    private FavoriteService favoriteService = BeanFactory.getBean(FavoriteService.class);
 
     // ================= 上传视频 =================
     public void upload(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -99,9 +101,18 @@ public class VideoController {
                 videoMap.put("liked", liked);
                 videoMap.put("followed", followed);
                 videoMap.put("followerCount", followerCount);
-                // ⭐ 新增返回标签和分区
+
+                // ⭐ 收藏状态（处理未登录情况）
+                if (currentUser != null) {
+                    videoMap.put("favorited", favoriteService.isFavorited(currentUser.getId(), "video", video.getId()));
+                } else {
+                    videoMap.put("favorited", false);
+                }
+
+                // 标签和分区
                 videoMap.put("tags", video.getTags());
                 videoMap.put("category", video.getCategory());
+
                 result.put("success", true);
                 result.put("data", videoMap);
             }
