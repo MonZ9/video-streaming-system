@@ -19,7 +19,8 @@
                         if (item.type === 'video') {
                             html += `<div><a href="video.html?id=${item.id}">[视频] ${item.title}</a> by ${item.authorName}</div>`;
                         } else if (item.type === 'post') {
-                            html += `<div><b>[动态]</b> ${item.content} by ${item.authorName} (${new Date(item.favTime).toLocaleString()})</div>`;
+                            // 动态增加点击跳转功能
+                            html += `<div><b>[动态]</b> <a href="post_detail.html?id=${item.id}">${item.content}</a> by ${item.authorName} (${new Date(item.favTime).toLocaleString()})</div>`;
                         }
                     });
                     document.getElementById("favList").innerHTML = html || '暂无收藏';

@@ -100,4 +100,26 @@ public class PostDao extends BaseDao<Post> {
         return false;
     }
 
+    // 查询作者ID
+    public Post findByIdWithAuthor(int id) {
+        String sql = "SELECT p.*, u.username AS authorName FROM posts p LEFT JOIN users u ON p.user_id = u.id WHERE p.id = ?";
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Post post = new Post();
+                post.setId(rs.getInt("id"));
+                post.setUserId(rs.getInt("user_id"));
+                post.setContent(rs.getString("content"));
+                post.setCreatedAt(rs.getTimestamp("created_at"));
+                post.setAuthorName(rs.getString("authorName"));
+                return post;
+            }
+        } catch (Exception e) {
+            LogUtil.error("获取动态详情失败", e);
+        }
+        return null;
+    }
+
 }

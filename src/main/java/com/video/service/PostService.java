@@ -35,4 +35,8 @@ public class PostService {
     public boolean deletePost(int postId, int userId) {
         return postDao.deletePost(postId, userId);
     }
+
+    public Post getPostById(int id) {
+        return postDao.findByIdWithAuthor(id);
+    }
 }

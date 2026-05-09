@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>动态详情</title>
+  <style>
+    body { font-family: Arial; text-align: center; }
+    .box { width: 500px; margin: 30px auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; text-align: left; }
+    .meta { color: #666; font-size: 14px; margin-top: 10px; }
+  </style>
+</head>
+<body onload="loadPostDetail()">
+<div class="box" id="postDetail">加载中...</div>
+<button onclick="history.back()">返回</button>
+
+<script src="js/api.js"></script>
+<script>
+  function loadPostDetail() {
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("id");
+    if (!postId) {
+      alert("缺少动态ID");
+      return;
+    }
+    request(`${BASE}/api/post/get?id=${postId}`)
+            .then(res => {
+              if (!res.success) {
+                document.getElementById("postDetail").innerHTML = `<p>${res.message || '加载失败'}</p>`;
+                return;
+              }
+              const p = res.data;
+              document.getElementById("postDetail").innerHTML = `
+                        <p style="font-size:18px;">${p.content}</p>
+                        <div class="meta">
+                            作者：<a href="user_profile.html?userId=${p.userId}">${p.authorName}</a>
+                            &nbsp;|&nbsp;
+                            ${new Date(p.createdAt).toLocaleString()}
+                        </div>
+                    `;
+            })
+            .catch(err => {
+              console.error(err);
+              document.getElementById("postDetail").innerHTML = "<p>加载失败</p>";
+            });
+  }
+</script>
+</body>
+</html>

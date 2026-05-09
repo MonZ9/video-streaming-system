@@ -88,4 +88,21 @@ public class PostController {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
+    // 新增获取接口
+    public void get(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        resp.setContentType("application/json;charset=UTF-8");
+        int id = Integer.parseInt(req.getParameter("id"));
+        Post post = postService.getPostById(id);
+        if (post == null) {
+            throw new BusinessException(404, "动态不存在");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", post.getId());
+        data.put("content", post.getContent());
+        data.put("createdAt", post.getCreatedAt());
+        data.put("userId", post.getUserId());
+        data.put("authorName", post.getAuthorName());
+        resp.getWriter().write(JSON.toJSONString(Result.ok(data)));
+    }
+
 }
