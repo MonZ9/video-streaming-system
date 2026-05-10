@@ -68,4 +68,29 @@ public class RedisUtil {
         }
     }
 
+    // RedisUtil.java 新增
+    public static Long decr(String key) {
+        try (Jedis jedis = getJedis()) {
+            return jedis.decr(key);
+        }
+    }
+
+    public static Long incr(String key) {
+        try (Jedis jedis = getJedis()) {
+            return jedis.incr(key);
+        }
+    }
+
+    public static void rpush(String key, String value) {
+        try (Jedis jedis = getJedis()) {
+            jedis.rpush(key, value);
+        }
+    }
+
+    public static void expire(String key, int seconds) {
+        try (Jedis jedis = getJedis()) {
+            jedis.expire(key, seconds);
+        }
+    }
+
 }

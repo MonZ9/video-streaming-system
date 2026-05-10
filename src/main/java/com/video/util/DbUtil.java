@@ -9,7 +9,8 @@ import java.util.Queue;
 
 public class DbUtil {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/video_db?useSSL=false&serverTimezone=UTC";
+    private static final String URL =
+            "jdbc:mysql://localhost:3306/video_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&useUnicode=true";
     private static final String USER = "root";
     private static final String PASSWORD = "123456";
 

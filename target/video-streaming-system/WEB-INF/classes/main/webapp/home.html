@@ -4,67 +4,185 @@
   <meta charset="UTF-8">
   <title>视频列表</title>
   <style>
-    body { font-family: Arial; text-align: center; }
-    #videoList { display: flex; flex-wrap: wrap; justify-content: center; }
-    .card { border: 1px solid #ccc; padding: 15px; margin: 15px; border-radius: 10px; width: 400px; }
-    video { width: 100%; border-radius: 8px; }
-    button { margin: 5px; padding: 6px 12px; cursor: pointer; }
-    #userInfo { margin: 10px; font-weight: bold; color: green; }
-    #uploadBox { margin: 20px; padding: 15px; border: 1px dashed #aaa; display: inline-block; }
-    textarea { width: 300px; height: 80px; resize: none; }
-    #userListBox { margin: 20px auto; width: 400px; border: 1px solid #ccc; padding: 10px; display: none; text-align: left; }
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #buttonBar {
+      margin-bottom: 25px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+    #buttonBar button {
+      margin: 0 4px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f9f9f9;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+    #buttonBar button:hover {
+      background: #e6e6e6;
+    }
+    #userInfo {
+      margin: 0 0 10px 0;
+      font-weight: bold;
+      color: green;
+      font-size: 16px;
+    }
+    #uploadBox {
+      width: 420px;
+      margin: 0 auto 25px auto;
+      padding: 20px;
+      border: 1px dashed #aaa;
+      border-radius: 10px;
+      background: #fafafa;
+      text-align: left;
+    }
+    #uploadBox h3 {
+      text-align: center;
+      margin-top: 0;
+    }
+    #uploadBox input, #uploadBox textarea, #uploadBox select {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      padding: 6px;
+      font-size: 14px;
+    }
+    #uploadBox textarea {
+      height: 80px;
+      resize: vertical;
+    }
+    #uploadBox button {
+      width: 100%;
+      padding: 8px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    #uploadBox button:hover {
+      background: #45a049;
+    }
+    #videoList {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+    }
+    .card {
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 10px;
+      width: 400px;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+    video {
+      width: 100%;
+      border-radius: 6px;
+      margin-top: 5px;
+    }
+    .card h3 {
+      margin: 0 0 5px 0;
+      cursor: pointer;
+      color: #2c3e50;
+    }
+    .card p {
+      margin: 5px 0;
+      color: #555;
+    }
+    .card button {
+      margin-top: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f0f0f0;
+    }
+    .card button:hover {
+      background: #e0e0e0;
+    }
+    #userListBox {
+      margin: 20px auto;
+      width: 400px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      display: none;
+      text-align: left;
+      background: #fff;
+    }
   </style>
 </head>
 
 <body onload="initPage()">
 
-<h2>视频列表</h2>
-
+<h2 style="margin-top: 0;">视频列表</h2>
 <div id="userInfo">加载中...</div>
 
-<button onclick="applyAdmin()">申请成为管理员</button>
-<button id="adminBtn" onclick="goAdmin()" style="display:none;">管理员审批</button>
-<button onclick="refreshVideos()">刷新视频</button>
-<button onclick="logout()">退出登录</button>
-<button onclick="goFollowers()">查看粉丝列表</button>
-<button onclick="goFollowing()">查看关注列表</button>
-<button onclick="goProfile()">个人主页</button>
-<button onclick="window.location.href='all_users.html'">共有用户</button>
-<button onclick="window.location.href='categories.html'">进入分区选择</button>
-<button onclick="window.location.href='favorites.html'">我的收藏</button>
-<button onclick="window.location.href='feed.html'">关注动态</button>
+<!-- 按钮区 -->
+<div id="buttonBar">
+  <button onclick="applyAdmin()" id="applyBtn">申请成为管理员</button>
+  <button id="adminBtn" onclick="goAdmin()" style="display:none;">管理员审批</button>
+  <button onclick="getVideos()">刷新视频</button>
+  <button onclick="logout()">退出登录</button>
+  <button onclick="goFollowers()">查看粉丝列表</button>
+  <button onclick="goFollowing()">查看关注列表</button>
+  <button onclick="goProfile()">个人主页</button>
+  <button onclick="window.location.href='all_users.html'">共有用户</button>
+  <button onclick="window.location.href='categories.html'">进入分区选择</button>
+  <button onclick="window.location.href='favorites.html'">我的收藏</button>
+  <button onclick="window.location.href='feed.html'">关注动态</button>
+  <!-- 优惠券按钮（动态显示） -->
+  <button id="adminCouponBtn" onclick="window.location.href='coupon_test.html'" style="display:none;">优惠券管理</button>
+  <button id="userCouponBtn" onclick="window.location.href='coupon_grab.html'" style="display:none;">优惠券抢购</button>
+</div>
 
-<!-- 上传视频 -->
+<!-- 上传视频区 -->
 <div id="uploadBox">
   <h3>上传视频</h3>
   <form id="uploadForm" enctype="multipart/form-data">
-    <input type="text" name="title" placeholder="视频标题" required><br><br>
-    <textarea name="description" placeholder="请输入视频简介"></textarea><br><br>
-
-    <!-- 分区下拉 -->
+    <input type="text" name="title" placeholder="视频标题" required>
+    <textarea name="description" placeholder="请输入视频简介"></textarea>
     <select name="category">
       <option value="美食">美食</option>
       <option value="探店">探店</option>
       <option value="科技">科技</option>
       <option value="未分类" selected>未分类</option>
-    </select><br><br>
-
-    <!-- 标签输入 -->
-    <input type="text" name="tags" placeholder="多个标签用逗号分隔"><br><br>
-
-    <input type="file" name="videoFile" required><br><br>
+    </select>
+    <input type="text" name="tags" placeholder="多个标签用逗号分隔">
+    <input type="file" name="videoFile" required>
     <button type="button" onclick="uploadVideo()">上传</button>
   </form>
 </div>
 
+<!-- 视频列表区 -->
 <div id="videoList"></div>
+
+<!-- 用户列表展示（用于粉丝/关注） -->
 <div id="userListBox"></div>
 
 <script src="js/api.js"></script>
 <script>
-  let allVideos = []; // 缓存当前获取的全部视频
+  // 注意：不需要再次声明 CURRENT_USER_ID，api.js 中已通过 window.CURRENT_USER_ID 初始化
+  // 这里也不再声明 let CURRENT_USER_ID，避免冲突
+  let allVideos = [];
 
   function initPage() {
+    // 调用 api.js 中的 loadUser 无法获取角色信息，因此我们仍保留自定义 loadUser
+    // 但避免变量冲突，我们直接使用函数内的变量，并通过 window 暴露
     loadUser();
     const urlParams = new URLSearchParams(window.location.search);
     const tagsParam = urlParams.get('tags');
@@ -75,42 +193,44 @@
     }
   }
 
+  // 重写 loadUser（覆盖 api.js 中的同名函数）
   function loadUser() {
     request(`${BASE}/api/user/getUserInfo`)
             .then(res => {
               if (res.success && res.data) {
                 const roleId = res.data.roleId;
+                // 将用户信息挂载到 window，供 api.js 中的 applyAdmin 使用
+                window.CURRENT_USER_ID = res.data.id;
+                window.CURRENT_ROLE_ID = roleId;
                 document.getElementById("userInfo").innerText = "欢迎你：" + res.data.username;
-                CURRENT_USER_ID = res.data.id;
-                CURRENT_ROLE_ID = roleId;
 
-                const applyBtn = document.querySelector("button[onclick='applyAdmin()']");
+                // 按钮显示控制
+                const applyBtn = document.getElementById("applyBtn");
+                const adminBtn = document.getElementById("adminBtn");
+                const adminCouponBtn = document.getElementById("adminCouponBtn");
+                const userCouponBtn = document.getElementById("userCouponBtn");
+
                 if (applyBtn) {
                   applyBtn.style.display = (roleId === 1) ? "none" : "inline-block";
                 }
-                const adminBtn = document.getElementById("adminBtn");
                 if (adminBtn) {
                   adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+                }
+                if (adminCouponBtn) {
+                  adminCouponBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+                }
+                if (userCouponBtn) {
+                  userCouponBtn.style.display = (roleId !== 1) ? "inline-block" : "none";
                 }
               } else {
                 window.location.href = "login.html";
               }
             })
-            .catch(() => { document.getElementById("userInfo").innerText = "加载用户失败"; });
+            .catch(() => {
+              document.getElementById("userInfo").innerText = "加载用户失败";
+            });
   }
 
-  // 刷新视频按钮行为
-  function refreshVideos() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tagsParam = urlParams.get('tags');
-    if (tagsParam) {
-      getVideosByTags(tagsParam);
-    } else {
-      getVideos();
-    }
-  }
-
-  // 获取所有视频（默认）
   function getVideos() {
     request(`${BASE}/api/video/getAllVideos`)
             .then(data => {
@@ -119,13 +239,12 @@
                 window.location.href = "login.html";
                 return;
               }
-              allVideos = data.data;
+              allVideos = data.data || [];
               showRandomThree();
             })
             .catch(() => alert("获取视频失败"));
   }
 
-  // 根据标签获取视频
   function getVideosByTags(tags) {
     request(`${BASE}/api/video/listByTags?tags=${encodeURIComponent(tags)}`)
             .then(res => {
@@ -138,19 +257,16 @@
             });
   }
 
-  // 从全部视频中随机抽取最多3个并渲染
   function showRandomThree() {
     if (!allVideos || allVideos.length === 0) {
       document.getElementById("videoList").innerHTML = "<p>暂无视频</p>";
       return;
     }
-    // 随机打乱并取前3个
     const shuffled = [...allVideos].sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, 3);
     renderVideoCards(picked);
   }
 
-  // 渲染视频卡片
   function renderVideoCards(list) {
     let html = "";
     list.forEach(v => {
@@ -168,46 +284,17 @@
     document.getElementById("videoList").innerHTML = html;
   }
 
-  // 其余函数不变
-  function showFollowers(userId) {
-    request(`${BASE}/api/follow/getFollowers?userId=${userId}`)
-            .then(res => {
-              if (!res.success) { alert(res.message || "获取粉丝失败"); return; }
-              renderUserList(res.data, "粉丝列表");
-            });
-  }
-
-  function showFollowing(userId) {
-    request(`${BASE}/api/follow/getFollowing?userId=${userId}`)
-            .then(res => {
-              if (!res.success) { alert(res.message || "获取关注失败"); return; }
-              renderUserList(res.data, "关注列表");
-            });
-  }
-
-  function renderUserList(list, title) {
-    const box = document.getElementById("userListBox");
-    if (!list || list.length === 0) {
-      box.innerHTML = `<h3>${title}</h3><p>暂无数据</p>`;
-      box.style.display = "block";
-      return;
+  function refreshVideos() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tags = urlParams.get('tags');
+    if (tags) {
+      getVideosByTags(tags);
+    } else {
+      getVideos();
     }
-    let html = `<h3>${title}</h3><ul>`;
-    list.forEach(u => { html += `<li>${u.username || ("用户" + u.userId)}</li>`; });
-    html += `</ul>`;
-    box.innerHTML = html;
-    box.style.display = "block";
   }
 
-  function logout() {
-    request(`${BASE}/api/user/logout`)
-            .then(() => { window.location.href = "login.html"; });
-  }
-
-  function goToVideo(id) {
-    window.location.href = `video.html?id=${id}`;
-  }
-
+  function goToVideo(id) { window.location.href = `video.html?id=${id}`; }
   function deleteVideoById(id) {
     if (!confirm("确定删除这个视频吗？")) return;
     request(`${BASE}/api/video/deleteVideo?id=${id}`)
@@ -220,6 +307,10 @@
   function goFollowers() { window.location.href = "followers.html"; }
   function goFollowing() { window.location.href = "following.html"; }
   function goProfile() { window.location.href = "profile.html"; }
+  function logout() {
+    request(`${BASE}/api/user/logout`)
+            .then(() => { window.location.href = "login.html"; });
+  }
 </script>
 </body>
 </html>

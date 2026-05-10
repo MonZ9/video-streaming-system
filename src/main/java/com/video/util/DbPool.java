@@ -6,7 +6,8 @@ import java.sql.SQLException;
 import java.util.LinkedList;
 
 public class DbPool {
-    private static final String URL = "jdbc:mysql://localhost:3306/video_db?useSSL=false&serverTimezone=UTC";
+    private static final String URL =
+            "jdbc:mysql://localhost:3306/video_db?useSSL=false&serverTimezone=Asia/Shanghai";
     private static final String USER = "root";
     private static final String PASSWORD = "123456";
 

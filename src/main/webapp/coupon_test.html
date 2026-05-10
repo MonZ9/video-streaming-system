@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>优惠券管理</title>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 8px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    #result, #createResult {
+      margin-top: 15px;
+      color: #333;
+      word-break: break-all;
+    }
+    .coupon-card {
+      border: 1px solid #ddd;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+      text-align: left;
+      position: relative;
+    }
+    .grabbed-label {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      font-weight: bold;
+    }
+    .code-text {
+      color: #2e7d32;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .end-btn {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body onload="checkLogin(); loadAdminCoupons()">
+<h2>优惠券活动管理</h2>
+<p id="loginStatus">检查登录状态...</p>
+
+<!-- ⭐ 创建新优惠券 -->
+<h3>创建新优惠券</h3>
+<input type="text" id="newTitle" placeholder="活动标题">
+<input type="number" id="newStock" placeholder="库存数量" value="100">
+<button onclick="createCoupon()">创建</button>
+<div id="createResult"></div>
+
+<hr>
+
+<label>优惠券ID：</label>
+<input type="number" id="couponId" placeholder="请输入优惠券ID" value="1">
+
+<!-- 设置结束时间并开始活动 -->
+<div style="margin-bottom: 10px;">
+  <label>结束时间：</label>
+  <input type="text" id="endTime" placeholder="yyyy-MM-dd HH:mm:ss" style="width: 60%;">
+</div>
+<button onclick="startActivity()">设置结束时间并开始活动</button>
+
+<div>
+  <button onclick="preheat()">预热库存 (Preheat)</button>
+  <button onclick="grab()">测试抢购 (Grab)</button>
+</div>
+
+<div id="result"></div>
+
+<!-- ⭐ 管理员查看优惠券列表 -->
+<h3>当前有效优惠券</h3>
+<div id="couponList">加载中...</div>
+
+<script src="js/api.js"></script>
+<script>
+  let token = null;
+
+  function checkLogin() {
+    token = localStorage.getItem("token");
+    if (token) {
+      document.getElementById("loginStatus").innerText = "已登录";
+    } else {
+      document.getElementById("loginStatus").innerHTML = '<a href="login.html">请先登录</a>';
+    }
+  }
+
+  function getHeaders() {
+    return { 'Authorization': 'Bearer ' + token };
+  }
+
+  // 管理员查看优惠券列表（与普通用户相同接口）
+  function loadAdminCoupons() {
+    if (!token) return;
+    fetch(`${BASE}/api/coupon/list`, { headers: getHeaders() })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                  html = '<p>暂无可抢优惠券</p>';
+                } else {
+                  data.data.forEach(coupon => {
+                    const startTime = new Date(coupon.startTime).toLocaleString();
+                    const endTime = new Date(coupon.endTime).toLocaleString();
+                    html += `
+                <div class="coupon-card">
+                  <strong>${coupon.title}</strong>
+                  <div>库存：${coupon.remain}/${coupon.stock}</div>
+                  <div>有效期：${startTime} ~ ${endTime}</div>
+                  ${coupon.grabbed && coupon.code ? `<div class="code-text">券码：${coupon.code}</div>` : ''}
+                  <div style="margin-top: 8px;">
+                    <button class="end-btn" onclick="endActivity(${coupon.id})">结束活动</button>
+                  </div>
+                  ${coupon.grabbed ? '<span class="grabbed-label">已拥有</span>' : ''}
+                </div>`;
+                  });
+                }
+                document.getElementById("couponList").innerHTML = html;
+              } else {
+                document.getElementById("couponList").innerHTML = '<p>加载失败：' + (data.message||'') + '</p>';
+              }
+            });
+  }
+
+  // 结束活动
+  function endActivity(couponId) {
+    if (!token) { alert("请先登录"); return; }
+    if (!confirm("确定要结束该优惠券活动吗？结束后用户将无法再抢购。")) return;
+    fetch(`${BASE}/api/coupon/end?couponId=${couponId}`, {
+      headers: getHeaders()
+    })
+            .then(res => res.json())
+            .then(data => {
+              alert(data.message || '操作完成');
+              loadAdminCoupons(); // 刷新列表
+            })
+            .catch(err => {
+              alert("请求失败: " + err.message);
+            });
+  }
+
+  // 创建优惠券
+  function createCoupon() {
+    if (!token) { alert("请先登录"); return; }
+    const title = document.getElementById("newTitle").value.trim();
+    const stock = document.getElementById("newStock").value;
+    if (!title || !stock) { alert("请填写标题和库存"); return; }
+    fetch(`${BASE}/api/coupon/create?title=${encodeURIComponent(title)}&stock=${stock}`, {
+      headers: getHeaders()
+    })
+            .then(res => res.json())
+            .then(data => {
+              document.getElementById("createResult").innerText = JSON.stringify(data, null, 2);
+              loadAdminCoupons(); // 刷新列表
+            })
+            .catch(err => {
+              document.getElementById("createResult").innerText = "请求失败: " + err.message;
+            });
+  }
+
+  function preheat() {
+    if (!token) { alert("请先登录"); return; }
+    const id = document.getElementById("couponId").value;
+    if (!id) { alert("请输入优惠券ID"); return; }
+    fetch(`${BASE}/api/coupon/preheat?couponId=${id}`, { headers: getHeaders() })
+            .then(res => res.json())
+            .then(data => { document.getElementById("result").innerText = JSON.stringify(data, null, 2); })
+            .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
+  }
+
+  function grab() {
+    if (!token) { alert("请先登录"); return; }
+    const id = document.getElementById("couponId").value;
+    if (!id) { alert("请输入优惠券ID"); return; }
+    fetch(`${BASE}/api/coupon/grab?couponId=${id}`, { headers: getHeaders() })
+            .then(res => res.json())
+            .then(data => { document.getElementById("result").innerText = JSON.stringify(data, null, 2); })
+            .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
+  }
+
+  function startActivity() {
+    if (!token) { alert("请先登录"); return; }
+    const id = document.getElementById("couponId").value;
+    const endTime = document.getElementById("endTime").value;
+    if (!id || !endTime) { alert("请输入优惠券ID和结束时间"); return; }
+    fetch(`${BASE}/api/coupon/preheatAndSetTime?couponId=${id}&endTime=${encodeURIComponent(endTime)}`, {
+      headers: getHeaders()
+    })
+            .then(res => res.json())
+            .then(data => { document.getElementById("result").innerText = JSON.stringify(data, null, 2); })
+            .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
+  }
+</script>
+</body>
+</html>

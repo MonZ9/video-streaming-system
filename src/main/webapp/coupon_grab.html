@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>优惠券抢购</title>
+    <style>
+        body { font-family: Arial; max-width: 500px; margin: 30px auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; text-align: center; }
+        .coupon-card { border: 1px solid #ddd; padding: 12px; margin: 10px 0; border-radius: 6px; text-align: left; position: relative; }
+        .coupon-card button { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); padding: 6px 14px; cursor: pointer; }
+        .grabbed-label { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #888; font-weight: bold; }
+        .code-text { color: #2e7d32; font-weight: bold; margin-top: 4px; }
+        #result { margin-top: 15px; color: #333; word-break: break-all; }
+    </style>
+</head>
+<body onload="checkLogin(); loadCoupons()">
+<h2>优惠券抢购</h2>
+<p id="loginStatus">检查登录状态...</p>
+<div id="couponList">加载中...</div>
+<div id="result"></div>
+
+<script src="js/api.js"></script>
+<script>
+    let token = null;
+
+    function checkLogin() {
+        token = localStorage.getItem("token");
+        if (token) {
+            document.getElementById("loginStatus").innerText = "已登录";
+        } else {
+            document.getElementById("loginStatus").innerHTML = '<a href="login.html">请先登录</a>';
+        }
+    }
+
+    function loadCoupons() {
+        if (!token) {
+            document.getElementById("couponList").innerHTML = '<p>请先登录</p>';
+            return;
+        }
+        fetch(`${BASE}/api/coupon/list`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    let html = '';
+                    if (data.data.length === 0) {
+                        html = '<p>暂无可抢优惠券</p>';
+                    } else {
+                        data.data.forEach(coupon => {
+                            const startTime = new Date(coupon.startTime).toLocaleString();
+                            const endTime = new Date(coupon.endTime).toLocaleString();
+                            html += `
+                                <div class="coupon-card">
+                                    <strong>${coupon.title}</strong>
+                                    ${coupon.grabbed
+                                ? ''
+                                : `<div>库存：${coupon.remain}/${coupon.stock}</div>`}
+                                    <div>有效期：${startTime} ~ ${endTime}</div>
+                                    ${coupon.grabbed && coupon.code
+                                ? `<div class="code-text">券码：${coupon.code}</div>`
+                                : ''}
+                                    ${coupon.grabbed
+                                ? '<span class="grabbed-label">已拥有</span>'
+                                : `<button onclick="grab(${coupon.id})">立即抢购</button>`}
+                                </div>`;
+                        });
+                    }
+                    document.getElementById("couponList").innerHTML = html;
+                } else {
+                    document.getElementById("couponList").innerHTML = '<p>加载失败：' + (data.message||'') + '</p>';
+                }
+            });
+    }
+
+    function grab(couponId) {
+        if (!token) { alert("请先登录"); return; }
+        fetch(`${BASE}/api/coupon/grab?couponId=${couponId}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+                if (data.success) {
+                    loadCoupons(); // 刷新列表
+                }
+            })
+            .catch(err => {
+                document.getElementById("result").innerText = "请求失败: " + err.message;
+            });
+    }
+</script>
+</body>
+</html>

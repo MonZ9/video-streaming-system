@@ -1,10 +1,5 @@
 const BASE = "http://localhost:8080/video_streaming_system_war_exploded";
 
-// ================= 当前状态 =================
-let CURRENT_USER_ID = null;
-let CURRENT_IS_ADMIN = false;
-let CURRENT_VIDEO_USER_ID = null;
-
 // ================= 通用请求（统一Token版） =================
 function request(url, options = {}) {
 
@@ -25,41 +20,35 @@ function request(url, options = {}) {
 }
 
 // ================= 获取当前用户 =================
+// ================= 获取当前用户 =================
 function loadUser() {
     return request(`${BASE}/api/user/getUserInfo`)
         .then(res => {
 
             if (res.success) {
 
-                CURRENT_USER_ID = res.data.id;
-                CURRENT_IS_ADMIN = res.data.isAdmin;
+                // 挂载到 window，避免重复声明变量
+                window.CURRENT_USER_ID = res.data.id;
+                window.CURRENT_IS_ADMIN = res.data.isAdmin;
 
-                console.log("当前用户ID:", CURRENT_USER_ID);
-                console.log("是否管理员:", CURRENT_IS_ADMIN);
+                console.log("当前用户ID:", window.CURRENT_USER_ID);
+                console.log("是否管理员:", window.CURRENT_IS_ADMIN);
                 console.log("user接口返回：", res);
 
-                // ⭐ 新增：控制管理员按钮显示
+                // 控制管理员按钮显示
                 const adminBtn = document.getElementById("adminBtn");
-
                 if (adminBtn) {
-                    if (res.data.isAdmin === true) {
-                        adminBtn.style.display = "inline-block";
-                    } else {
-                        adminBtn.style.display = "none";
-                    }
+                    adminBtn.style.display = res.data.isAdmin === true ? "inline-block" : "none";
                 }
 
             } else {
-
                 alert(res.message || "请先登录");
-
                 localStorage.removeItem("token");
                 window.location.href = "login.html";
             }
 
         })
         .catch(err => {
-
             console.error("获取用户失败:", err);
             alert("网络异常，无法获取用户信息");
         });
@@ -121,63 +110,6 @@ function register() {
         });
 }
 
-// ================= 获取视频（核心修复） =================
-function getVideos() {
-
-    request(`${BASE}/api/video/getAllVideos`)
-        .then(data => {
-
-            console.log("视频接口返回：", data);
-
-            //仅在“明确未登录/过期”时跳转
-            if (data.success === false &&
-                (data.message === "未登录" || data.message === "登录已过期")) {
-
-                alert("登录已失效，请重新登录");
-                localStorage.removeItem("token");
-                window.location.href = "login.html";
-                return;
-            }
-
-            //其他错误不跳转
-            if (!data.success) {
-                alert(data.message || "获取视频失败");
-                return;
-            }
-
-            let list = data.data || [];
-
-            if (list.length === 0) {
-                document.getElementById("videoList").innerHTML = "<p>暂无视频</p>";
-                return;
-            }
-
-            list.sort(() => Math.random() - 0.5);
-            let showList = list.slice(0, 3);
-
-            let html = "";
-
-            showList.forEach(v => {
-
-                html += `
-                    <div class="card">
-                        <h3 onclick="goToVideo(${v.id})">${v.title}</h3>
-                        <video src="${v.url}" controls></video>
-                        <p>${v.description || "无描述"}</p>
-                        <button onclick="goToVideo(${v.id})">查看详情</button>
-                        <button onclick="deleteVideoById(${v.id})">删除</button>
-                    </div>
-                `;
-            });
-
-            document.getElementById("videoList").innerHTML = html;
-
-        })
-        .catch(err => {
-            console.error("请求失败:", err);
-            alert("网络或服务器异常");
-        });
-}
 // ================= 点赞视频 =================
 function likeVideo(videoId) {
 
@@ -186,6 +118,7 @@ function likeVideo(videoId) {
             alert(res.message || "操作完成");
         });
 }
+
 // ================= 跳转视频 =================
 function goToVideo(id) {
     window.location.href = `video.html?id=${id}`;
@@ -202,7 +135,10 @@ function deleteVideoById(id) {
             alert(res.message || "操作完成");
 
             if (res.success) {
-                getVideos();
+                // 由页面自己重新加载视频列表（调用页面的 getVideos）
+                if (typeof getVideos === 'function') {
+                    getVideos();
+                }
             }
         })
         .catch(err => {
@@ -232,7 +168,10 @@ function uploadVideo() {
 
             if (res.success) {
                 form.reset();
-                getVideos();
+                // 由页面自己重新加载视频列表
+                if (typeof getVideos === 'function') {
+                    getVideos();
+                }
             }
         })
         .catch(err => {
@@ -272,7 +211,7 @@ function submitComment() {
 // ================= 加载评论 =================
 function loadComments(videoId) {
 
-    if (CURRENT_USER_ID === null) {
+    if (window.CURRENT_USER_ID === null || window.CURRENT_USER_ID === undefined) {
         setTimeout(() => loadComments(videoId), 200);
         return;
     }
@@ -293,9 +232,9 @@ function loadComments(videoId) {
 
                     // ⭐ 判断是否可以删除（RBAC）
                     let canDelete =
-                        Number(c.userId) === Number(CURRENT_USER_ID) ||
-                        Number(CURRENT_VIDEO_USER_ID) === Number(CURRENT_USER_ID) ||
-                        CURRENT_IS_ADMIN === true;
+                        Number(c.userId) === Number(window.CURRENT_USER_ID) ||
+                        Number(window.CURRENT_VIDEO_USER_ID) === Number(window.CURRENT_USER_ID) ||
+                        window.CURRENT_IS_ADMIN === true;
 
                     let deleteBtn = canDelete
                         ? `<button onclick="deleteComment(${c.id})" style="color:red;margin-left:5px;">删除</button>`
@@ -345,6 +284,7 @@ function likeComment(commentId) {
             }
         });
 }
+
 // ================= 删除评论 =================
 function deleteComment(commentId, videoId) {
 
@@ -382,7 +322,7 @@ function logout() {
 // ================= 申请管理员 =================
 function applyAdmin() {
 
-    if (!CURRENT_USER_ID) {
+    if (!window.CURRENT_USER_ID) {
         alert("请先登录");
         return;
     }
@@ -396,7 +336,8 @@ function applyAdmin() {
             alert("申请失败");
         });
 }
-//======管理员审批======
+
+// ====== 管理员审批 ======
 function goAdmin() {
     window.location.href = "admin.html";
 }
@@ -415,17 +356,14 @@ function updateUIByRole(roleId) {
     }
 }
 
-function likeVideo() {
-
+// 备用点赞视频详情函数（可能在 video.html 内重写）
+function likeVideoDetail() {
     const videoId = new URLSearchParams(window.location.search).get("id");
-
     request(`${BASE}/api/like/likeVideo?videoId=${videoId}`)
         .then(res => {
-
             alert(res.message || "操作完成");
-
-            if (res.success) {
-                loadVideoDetail(); // 或刷新点赞数
+            if (res.success && typeof loadVideoDetail === 'function') {
+                loadVideoDetail();
             }
         })
         .catch(() => alert("点赞失败"));
