@@ -163,5 +163,47 @@ public class CouponService {
     }
 
 
+    public Coupon getCouponById(int id) { return couponDao.findById(id); }
+    public boolean isGrabbed(int couponId, int userId) { return couponDao.isAlreadyGrabbed(couponId, userId); }
+
+    // CouponService.java
+    public String adjustStock(int couponId, int delta) {
+        Coupon coupon = couponDao.findById(couponId);
+        if (coupon == null) return "优惠券不存在";
+        if (coupon.getStatus() != 2) return "活动未在进行中";
+
+        // 1. Redis 原子调整库存（若 key 不存在则不操作？这里确保预热过）
+        String redisKey = "coupon:stock:" + couponId;
+        String stockStr = RedisUtil.get(redisKey);
+        if (stockStr == null) {
+            // 如果 Redis 中没有，先预热
+            preheat(couponId);
+        }
+        Long newStock;
+        if (delta > 0) {
+            newStock = RedisUtil.incrBy(redisKey, delta);
+        } else {
+            // 减少库存，需判断是否足够
+            long cur = Long.parseLong(RedisUtil.get(redisKey));
+            if (cur + delta < 0) return "库存不足，无法减少";
+            newStock = RedisUtil.decrBy(redisKey, -delta);
+        }
+
+        // 2. 异步同步数据库 (简单起见，直接同步)
+        boolean dbSuccess = couponDao.updateRemainByDelta(couponId, delta);
+        if (!dbSuccess) {
+            // 回滚 Redis
+            if (delta > 0) {
+                RedisUtil.decrBy(redisKey, delta);
+            } else {
+                RedisUtil.incrBy(redisKey, -delta);
+            }
+            return "数据库更新失败，已回滚";
+        }
+
+        return "调整成功，新库存: " + newStock;
+    }
+
+
 
 }

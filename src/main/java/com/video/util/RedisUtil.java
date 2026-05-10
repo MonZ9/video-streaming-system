@@ -93,4 +93,15 @@ public class RedisUtil {
         }
     }
 
+    public static Long incrBy(String key, long increment) {
+        try (Jedis jedis = getJedis()) {
+            return jedis.incrBy(key, increment);
+        }
+    }
+    public static Long decrBy(String key, long decrement) {
+        try (Jedis jedis = getJedis()) {
+            return jedis.decrBy(key, decrement);
+        }
+    }
+
 }

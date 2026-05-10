@@ -3,12 +3,10 @@ package com.video.controller;
 import com.alibaba.fastjson.JSON;
 import com.video.core.BeanFactory;
 import com.video.exception.BusinessException;
+import com.video.model.Coupon;
 import com.video.model.User;
 import com.video.model.Video;
-import com.video.service.FollowService;
-import com.video.service.UserService;
-import com.video.service.VideoService;
-import com.video.service.FavoriteService;
+import com.video.service.*;
 import com.video.util.AuthUtil;
 import com.video.util.LogUtil;
 import com.video.util.PermissionUtil;
@@ -27,6 +25,7 @@ public class VideoController {
     private UserService userService = BeanFactory.getBean(UserService.class);
     private FollowService followService = BeanFactory.getBean(FollowService.class);
     private FavoriteService favoriteService = BeanFactory.getBean(FavoriteService.class);
+    private CouponService couponService = BeanFactory.getBean(CouponService.class);
 
     // ================= 上传视频 =================
     public void upload(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -49,7 +48,8 @@ public class VideoController {
         String fileName = System.currentTimeMillis() + "_" + filePart.getSubmittedFileName();
         String savePath = req.getServletContext().getRealPath("/videos");
         String category = req.getParameter("category");
-        String tags = req.getParameter("tags");   // ⭐ 新增：获取标签参数
+        String tags = req.getParameter("tags");
+        String couponIdStr = req.getParameter("couponId");
 
         new File(savePath).mkdirs();
         filePart.write(savePath + File.separator + fileName);
@@ -60,7 +60,11 @@ public class VideoController {
         video.setUrl("videos/" + fileName);
         video.setUserId(user.getId());
         video.setCategory(category == null ? "未分类" : category);
-        video.setTags(tags == null ? "" : tags);   // ⭐ 新增：设置标签
+        video.setTags(tags == null ? "" : tags);
+        // ⭐ 修复：正确的变量名 video，并处理空值
+        if (couponIdStr != null && !couponIdStr.isEmpty()) {
+            video.setCouponId(Integer.parseInt(couponIdStr));
+        }
 
         boolean success = videoService.addVideo(video);
         result.put("success", success);
@@ -102,7 +106,7 @@ public class VideoController {
                 videoMap.put("followed", followed);
                 videoMap.put("followerCount", followerCount);
 
-                // ⭐ 收藏状态（处理未登录情况）
+                // 收藏状态（处理未登录情况）
                 if (currentUser != null) {
                     videoMap.put("favorited", favoriteService.isFavorited(currentUser.getId(), "video", video.getId()));
                 } else {
@@ -112,6 +116,28 @@ public class VideoController {
                 // 标签和分区
                 videoMap.put("tags", video.getTags());
                 videoMap.put("category", video.getCategory());
+
+                //查询关联的优惠券信息
+                if (video.getCouponId() != null) {
+                    Coupon coupon = couponService.getCouponById(video.getCouponId());
+                    if (coupon != null && coupon.getStatus() == 2
+                            && coupon.getStartTime().getTime() <= System.currentTimeMillis()
+                            && coupon.getEndTime().getTime() >= System.currentTimeMillis()) {
+                        Map<String, Object> couponMap = new HashMap<>();
+                        couponMap.put("id", coupon.getId());
+                        couponMap.put("title", coupon.getTitle());
+                        couponMap.put("remain", coupon.getRemain());
+                        couponMap.put("stock", coupon.getStock());
+                        couponMap.put("startTime", coupon.getStartTime());
+                        couponMap.put("endTime", coupon.getEndTime());
+                        boolean grabbed = false;
+                        if (currentUser != null) {
+                            grabbed = couponService.isGrabbed(coupon.getId(), currentUser.getId());
+                        }
+                        couponMap.put("grabbed", grabbed);
+                        videoMap.put("coupon", couponMap);
+                    }
+                }
 
                 result.put("success", true);
                 result.put("data", videoMap);

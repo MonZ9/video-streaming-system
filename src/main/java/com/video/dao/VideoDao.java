@@ -18,7 +18,7 @@ public class VideoDao extends BaseDao<Video> {
     // ================= 保存视频 =================
     @Override
     public boolean save(Video video) {
-        String sql = "INSERT INTO videos (title, url, description, user_id, category, tags) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO videos (title, url, description, user_id, category, tags, coupon_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DbUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, video.getTitle());
@@ -27,6 +27,11 @@ public class VideoDao extends BaseDao<Video> {
             ps.setInt(4, video.getUserId());
             ps.setString(5, video.getCategory() == null ? "未分类" : video.getCategory());
             ps.setString(6, video.getTags() == null ? "" : video.getTags());
+            if (video.getCouponId() != null) {
+                ps.setInt(7, video.getCouponId());
+            } else {
+                ps.setNull(7, Types.INTEGER);
+            }
             int rows = ps.executeUpdate();
             if (rows > 0) {
                 ResultSet rs = ps.getGeneratedKeys();

@@ -163,6 +163,9 @@
       <option value="未分类" selected>未分类</option>
     </select>
     <input type="text" name="tags" placeholder="多个标签用逗号分隔">
+    <select id="couponSelect" name="couponId">
+      <option value="">无优惠券</option>
+    </select>
     <input type="file" name="videoFile" required>
     <button type="button" onclick="uploadVideo()">上传</button>
   </form>
@@ -176,14 +179,12 @@
 
 <script src="js/api.js"></script>
 <script>
-  // 注意：不需要再次声明 CURRENT_USER_ID，api.js 中已通过 window.CURRENT_USER_ID 初始化
-  // 这里也不再声明 let CURRENT_USER_ID，避免冲突
+  // 全局变量（不再重复声明冲突变量，统一使用 window.xxx）
   let allVideos = [];
 
   function initPage() {
-    // 调用 api.js 中的 loadUser 无法获取角色信息，因此我们仍保留自定义 loadUser
-    // 但避免变量冲突，我们直接使用函数内的变量，并通过 window 暴露
     loadUser();
+    loadCouponOptions();   // 加载优惠券下拉选项
     const urlParams = new URLSearchParams(window.location.search);
     const tagsParam = urlParams.get('tags');
     if (tagsParam) {
@@ -193,35 +194,25 @@
     }
   }
 
-  // 重写 loadUser（覆盖 api.js 中的同名函数）
+  // 自定义 loadUser，设置角色并控制按钮显示
   function loadUser() {
     request(`${BASE}/api/user/getUserInfo`)
             .then(res => {
               if (res.success && res.data) {
                 const roleId = res.data.roleId;
-                // 将用户信息挂载到 window，供 api.js 中的 applyAdmin 使用
                 window.CURRENT_USER_ID = res.data.id;
                 window.CURRENT_ROLE_ID = roleId;
                 document.getElementById("userInfo").innerText = "欢迎你：" + res.data.username;
 
-                // 按钮显示控制
                 const applyBtn = document.getElementById("applyBtn");
                 const adminBtn = document.getElementById("adminBtn");
                 const adminCouponBtn = document.getElementById("adminCouponBtn");
                 const userCouponBtn = document.getElementById("userCouponBtn");
 
-                if (applyBtn) {
-                  applyBtn.style.display = (roleId === 1) ? "none" : "inline-block";
-                }
-                if (adminBtn) {
-                  adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
-                }
-                if (adminCouponBtn) {
-                  adminCouponBtn.style.display = (roleId === 1) ? "inline-block" : "none";
-                }
-                if (userCouponBtn) {
-                  userCouponBtn.style.display = (roleId !== 1) ? "inline-block" : "none";
-                }
+                if (applyBtn) applyBtn.style.display = (roleId === 1) ? "none" : "inline-block";
+                if (adminBtn) adminBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+                if (adminCouponBtn) adminCouponBtn.style.display = (roleId === 1) ? "inline-block" : "none";
+                if (userCouponBtn) userCouponBtn.style.display = (roleId !== 1) ? "inline-block" : "none";
               } else {
                 window.location.href = "login.html";
               }
@@ -310,6 +301,32 @@
   function logout() {
     request(`${BASE}/api/user/logout`)
             .then(() => { window.location.href = "login.html"; });
+  }
+
+  // 加载优惠券下拉框（仅显示有库存的进行中活动）
+  function loadCouponOptions() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    request(`${BASE}/api/coupon/list`)
+            .then(res => {
+              if (res.success) {
+                const select = document.getElementById("couponSelect");
+                select.innerHTML = '<option value="">无优惠券</option>';
+                res.data.forEach(c => {
+                  if (c.remain > 0) {
+                    const option = document.createElement("option");
+                    option.value = c.id;
+                    option.textContent = c.title + " (剩余" + c.remain + ")";
+                    select.appendChild(option);
+                  }
+                });
+              }
+            });
+  }
+
+  function getAuthHeaders() {
+    const token = localStorage.getItem("token");
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
   }
 </script>
 </body>

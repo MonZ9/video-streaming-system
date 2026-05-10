@@ -169,4 +169,18 @@ public class CouponDao {
         return false;
     }
 
+    public boolean updateRemainByDelta(int couponId, int delta) {
+        String sql = "UPDATE coupons SET remain = remain + ? WHERE id = ? AND remain + ? >= 0";
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, delta);
+            ps.setInt(2, couponId);
+            ps.setInt(3, delta);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            LogUtil.error("动态调整库存失败", e);
+        }
+        return false;
+    }
+
 }

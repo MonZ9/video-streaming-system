@@ -14,6 +14,7 @@ public class Video {
     //视频分区
     private String category;
     private String tags;
+    private Integer couponId;
 
     // ===== Getter & Setter =====
     public int getId() {
@@ -87,6 +88,10 @@ public class Video {
     public void setTags(String tags) {
         this.tags = tags;
     }
+
+    public Integer getCouponId() { return couponId; }
+    public void setCouponId(Integer couponId) { this.couponId = couponId; }
+
 
     // ===== toString（建议也加上 authorName 方便调试）=====
     @Override

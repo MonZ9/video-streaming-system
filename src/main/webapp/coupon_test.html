@@ -76,6 +76,13 @@
 <label>优惠券ID：</label>
 <input type="number" id="couponId" placeholder="请输入优惠券ID" value="1">
 
+<!-- 动态调整库存 -->
+<div style="margin-bottom: 10px;">
+  <label>调整库存：</label>
+  <input type="number" id="delta" placeholder="+10 或 -5" style="width: 60%;">
+</div>
+<button onclick="adjustStock()">调整库存</button>
+
 <!-- 设置结束时间并开始活动 -->
 <div style="margin-bottom: 10px;">
   <label>结束时间：</label>
@@ -111,7 +118,7 @@
     return { 'Authorization': 'Bearer ' + token };
   }
 
-  // 管理员查看优惠券列表（与普通用户相同接口）
+  // 管理员查看优惠券列表
   function loadAdminCoupons() {
     if (!token) return;
     fetch(`${BASE}/api/coupon/list`, { headers: getHeaders() })
@@ -155,11 +162,9 @@
             .then(res => res.json())
             .then(data => {
               alert(data.message || '操作完成');
-              loadAdminCoupons(); // 刷新列表
+              loadAdminCoupons();
             })
-            .catch(err => {
-              alert("请求失败: " + err.message);
-            });
+            .catch(err => { alert("请求失败: " + err.message); });
   }
 
   // 创建优惠券
@@ -174,13 +179,12 @@
             .then(res => res.json())
             .then(data => {
               document.getElementById("createResult").innerText = JSON.stringify(data, null, 2);
-              loadAdminCoupons(); // 刷新列表
+              loadAdminCoupons();
             })
-            .catch(err => {
-              document.getElementById("createResult").innerText = "请求失败: " + err.message;
-            });
+            .catch(err => { document.getElementById("createResult").innerText = "请求失败: " + err.message; });
   }
 
+  // 预热库存
   function preheat() {
     if (!token) { alert("请先登录"); return; }
     const id = document.getElementById("couponId").value;
@@ -191,6 +195,7 @@
             .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
   }
 
+  // 测试抢购
   function grab() {
     if (!token) { alert("请先登录"); return; }
     const id = document.getElementById("couponId").value;
@@ -201,6 +206,7 @@
             .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
   }
 
+  // 设置结束时间并开始活动
   function startActivity() {
     if (!token) { alert("请先登录"); return; }
     const id = document.getElementById("couponId").value;
@@ -211,6 +217,23 @@
     })
             .then(res => res.json())
             .then(data => { document.getElementById("result").innerText = JSON.stringify(data, null, 2); })
+            .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
+  }
+
+  // ⭐ 动态调整库存
+  function adjustStock() {
+    if (!token) { alert("请先登录"); return; }
+    const id = document.getElementById("couponId").value;
+    const delta = document.getElementById("delta").value;
+    if (!id || !delta) { alert("请输入优惠券ID和调整数量"); return; }
+    fetch(`${BASE}/api/coupon/adjustStock?couponId=${id}&delta=${delta}`, {
+      headers: getHeaders()
+    })
+            .then(res => res.json())
+            .then(data => {
+              document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+              loadAdminCoupons(); // 刷新列表显示最新库存
+            })
             .catch(err => { document.getElementById("result").innerText = "请求失败: " + err.message; });
   }
 </script>

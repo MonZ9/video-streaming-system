@@ -26,6 +26,26 @@
       font-size: 13px;
       color: #333;
     }
+    /* 优惠券卡片样式 */
+    .coupon-card-detail {
+      background: #fff9e6;
+      border: 1px solid #ffcc00;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+      text-align: left;
+    }
+    .coupon-card-detail strong {
+      font-size: 16px;
+    }
+    .coupon-card-detail button {
+      background: #ff6600;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -43,19 +63,24 @@
   </p>
 
   <div id="videoTags" style="margin: 10px 0;"></div>
+
+  <!-- 优惠券展示区 -->
+  <div id="couponSection" style="display:none;"></div>
+
   <video id="videoPlayer" controls>
     您的浏览器不支持 video 标签
   </video>
 
   <p id="desc">加载中...</p>
 
-  <!-- 点赞按钮 -->
+  <!-- 点赞和收藏按钮 -->
   <div style="margin: 10px 0;">
     <button id="likeBtn" onclick="toggleLikeVideo()">👍 点赞</button>
     <span id="videoLikeCount">0</span>
     <button id="favoriteBtn" onclick="toggleFavorite()">⭐ 收藏</button>
   </div>
-<!--发表评论-->
+
+  <!-- 发表评论 -->
   <div class="comment-box">
     <h3>发表评论</h3>
     <textarea id="comment_input"></textarea><br>
@@ -80,31 +105,26 @@
 
 <script>
   let videoId = null;
-  let VIDEO_LIKED = false;  // 用来记录当前用户是否已经点赞
+  let VIDEO_LIKED = false;
   let FOLLOWED = false;
+  let VIDEO_FAVORITED = false;
 
   function initPage() {
     const params = new URLSearchParams(window.location.search);
     videoId = params.get("id");
-
     if (!videoId) {
       alert("参数错误");
       return;
     }
-
     loadUser().then(() => {
       loadVideoDetail();
       loadComments(videoId);
     });
   }
 
-  // 全局新增收藏状态变量（放在其他全局变量旁边）
-  let VIDEO_FAVORITED = false;
-
   function loadVideoDetail() {
     request(`${BASE}/api/video/getVideo?id=${videoId}`)
             .then(data => {
-
               if (!data.success || !data.data) {
                 alert(data.message || "视频不存在");
                 document.getElementById("title").innerText = "加载失败";
@@ -131,28 +151,48 @@
                 tagsContainer.innerHTML = '';
               }
 
+              // 优惠券展示
+              const couponDiv = document.getElementById("couponSection");
+              if (video.coupon) {
+                const c = video.coupon;
+                let buttonHtml = '';
+                if (c.grabbed) {
+                  buttonHtml = '<span style="color:#2e7d32; font-weight:bold;">已拥有</span>';
+                } else {
+                  buttonHtml = `<button onclick="grabCoupon(${c.id})">立即抢购</button>`;
+                }
+                couponDiv.innerHTML = `
+            <div class="coupon-card-detail">
+              <strong>🎫 ${c.title}</strong>
+              <div>库存：${c.remain}/${c.stock}</div>
+              <div>有效期：${new Date(c.startTime).toLocaleString()} ~ ${new Date(c.endTime).toLocaleString()}</div>
+              ${buttonHtml}
+            </div>`;
+                couponDiv.style.display = 'block';
+              } else {
+                couponDiv.style.display = 'none';
+              }
+
               document.getElementById("videoPlayer").src = video.url || "";
 
-              // ===== 点赞数 =====
+              // 点赞
               document.getElementById("videoLikeCount").innerText = video.likeCount || 0;
               VIDEO_LIKED = video.liked || false;
               updateLikeBtn();
 
-              // ===== 关注按钮 =====
+              // 关注
               FOLLOWED = video.followed || false;
               document.getElementById("followerCount").innerText = video.followerCount || 0;
               updateFollowBtn();
-
-              if (CURRENT_USER_ID && CURRENT_VIDEO_USER_ID) {
-                if (Number(CURRENT_USER_ID) === Number(CURRENT_VIDEO_USER_ID)) {
+              if (window.CURRENT_USER_ID && CURRENT_VIDEO_USER_ID) {
+                if (Number(window.CURRENT_USER_ID) === Number(CURRENT_VIDEO_USER_ID)) {
                   document.getElementById("followBtn").style.display = "none";
                 }
               }
 
-              // ===== ⭐ 收藏状态与按钮 =====
+              // 收藏
               VIDEO_FAVORITED = video.favorited || false;
-              updateFavoriteBtn();   // 后面定义
-
+              updateFavoriteBtn();
             })
             .catch(err => {
               console.error("video load error:", err);
@@ -160,47 +200,55 @@
             });
   }
 
-  // ================= 加载评论（最终版） =================
+  // 优惠券抢购函数
+  function grabCoupon(couponId) {
+    if (!window.CURRENT_USER_ID) {
+      alert("请先登录");
+      return;
+    }
+    fetch(`${BASE}/api/coupon/grab?couponId=${couponId}`, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+    })
+            .then(res => res.json())
+            .then(data => {
+              alert(data.message || "操作完成");
+              if (data.success) {
+                loadVideoDetail(); // 刷新页面以更新状态
+              }
+            })
+            .catch(err => {
+              alert("请求失败: " + err.message);
+            });
+  }
+
+  // ================= 加载评论（保持原样） =================
   function loadComments(videoId) {
     const sort = document.querySelector('input[name="sort"]:checked')?.value || 'time';
-
     request(`${BASE}/api/comment/getCommentsByVideoId?videoId=${videoId}&sort=${sort}`)
             .then(res => {
               let listDiv = document.getElementById("commentList");
               listDiv.innerHTML = "";
-
               if (!res.success || !res.data || res.data.length === 0) {
                 listDiv.innerHTML = "暂无评论";
                 return;
               }
-
               res.data.forEach(comment => {
-                let createdAt = comment.createdAt
-                        ? new Date(comment.createdAt).toLocaleString()
-                        : "";
-
+                let createdAt = comment.createdAt ? new Date(comment.createdAt).toLocaleString() : "";
                 let html = `
-                    <div class="comment-item">
-                        <div class="comment-user">
-                            ${comment.username || ("用户" + comment.userId)}
-                            <span style="color:#999;font-size:12px;margin-left:10px;">${createdAt}</span>
-                        </div>
-                        <p>${comment.content}</p>
-                        <div>
-                            <span class="like-count" data-id="${comment.id}">
-                                👍 ${comment.likeCount || 0}
-                            </span>
-                            <button data-id="${comment.id}" onclick="likeComment(${comment.id})">
-                                ${comment.liked ? "取消点赞" : "点赞"}
-                            </button>
-                            <!-- ⭐ 加入查看主页按钮 -->
-                            <button onclick="goToUserProfile(${comment.userId})" style="margin-left:5px;">查看主页</button>
-                `;
-
+            <div class="comment-item">
+              <div class="comment-user">
+                ${comment.username || ("用户" + comment.userId)}
+                <span style="color:#999;font-size:12px;margin-left:10px;">${createdAt}</span>
+              </div>
+              <p>${comment.content}</p>
+              <div>
+                <span class="like-count" data-id="${comment.id}">👍 ${comment.likeCount || 0}</span>
+                <button data-id="${comment.id}" onclick="likeComment(${comment.id})">${comment.liked ? "取消点赞" : "点赞"}</button>
+                <button onclick="goToUserProfile(${comment.userId})" style="margin-left:5px;">查看主页</button>
+          `;
                 if (comment.canDelete) {
                   html += `<button onclick="deleteComment(${comment.id})" style="color:red;">删除</button>`;
                 }
-
                 html += `</div></div>`;
                 listDiv.innerHTML += html;
               });
@@ -211,66 +259,43 @@
             });
   }
 
-  // ================= 点赞/取消评论 =================
+  // 评论点赞/取消
   function likeComment(commentId) {
     request(`${BASE}/api/like/toggleCommentLike?commentId=${commentId}`)
             .then(res => {
-              if (!res.success) {
-                alert(res.message || "操作失败");
-                return;
-              }
-
+              if (!res.success) { alert(res.message || "操作失败"); return; }
               const btn = document.querySelector(`button[data-id="${commentId}"]`);
               const countSpan = document.querySelector(`.like-count[data-id="${commentId}"]`);
-
               if (btn && countSpan) {
                 countSpan.innerText = "👍 " + res.likeCount;
                 btn.innerText = res.liked ? "取消点赞" : "点赞";
               }
-            })
-            .catch(() => alert("操作失败"));
+            });
   }
 
-  // ================= 删除评论 =================
+  // 删除评论
   function deleteComment(id) {
     if (!confirm("确定删除吗？")) return;
-
     request(`${BASE}/api/comment/deleteComment?id=${id}`)
             .then(res => {
               alert(res.message || "操作完成");
-              if (res.success) {
-                loadComments(videoId);
-              }
-            })
-            .catch(() => alert("删除失败"));
+              if (res.success) loadComments(videoId);
+            });
   }
 
-  // ================= 视频点赞/取消 =================
+  // 视频点赞
   function toggleLikeVideo() {
-
     request(`${BASE}/api/like/toggleVideoLike?videoId=${videoId}`)
             .then(res => {
-
-              console.log("toggle返回:", res);
-
-              if (!res.success) {
-                alert(res.message || "操作失败");
-                return;
-              }
-
-              // ⭐ 用后端返回的数据（最稳）
+              if (!res.success) { alert(res.message || "操作失败"); return; }
               VIDEO_LIKED = res.liked;
               document.getElementById("videoLikeCount").innerText = res.likeCount;
-
-              updateLikeBtn(); // 刷新按钮状态
-            })
-            .catch(() => alert("操作失败"));
+              updateLikeBtn();
+            });
   }
 
-  //=======按钮刷新函数=======
   function updateLikeBtn() {
     const btn = document.getElementById("likeBtn");
-
     if (VIDEO_LIKED) {
       btn.innerText = "❤️ 已点赞（点击取消）";
     } else {
@@ -279,29 +304,18 @@
   }
 
   function toggleFollow() {
-
     const targetId = CURRENT_VIDEO_USER_ID;
-
     request(`${BASE}/api/follow/toggleFollow?userId=${targetId}`)
             .then(res => {
-
-              if (!res.success) {
-                alert(res.message);
-                return;
-              }
-
+              if (!res.success) { alert(res.message); return; }
               FOLLOWED = res.followed;
-
               document.getElementById("followerCount").innerText = res.followerCount;
-
               updateFollowBtn();
             });
   }
 
   function updateFollowBtn() {
-
     const btn = document.getElementById("followBtn");
-
     if (FOLLOWED) {
       btn.innerText = "已关注（点击取消）";
     } else {
@@ -309,10 +323,7 @@
     }
   }
 
-  function goToUserProfile(userId) {
-    window.location.href = `user_profile.html?userId=${userId}`;
-  }
-
+  function goToUserProfile(userId) { window.location.href = `user_profile.html?userId=${userId}`; }
   function goToAuthorProfile() {
     if (CURRENT_VIDEO_USER_ID) {
       window.location.href = `user_profile.html?userId=${CURRENT_VIDEO_USER_ID}`;
@@ -339,7 +350,6 @@
       btn.innerText = VIDEO_FAVORITED ? "⭐ 已收藏" : "⭐ 收藏";
     }
   }
-
 </script>
 
 </body>

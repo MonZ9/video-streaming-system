@@ -117,4 +117,20 @@ public class CouponController {
         resp.getWriter().write(JSON.toJSONString(Result.ok("活动已结束", null)));
     }
 
+    public void adjustStock(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        resp.setContentType("application/json;charset=UTF-8");
+        User user = AuthUtil.getLoginUser(req);
+        if (user == null) throw new AuthException();
+        int couponId = Integer.parseInt(req.getParameter("couponId"));
+        int delta = Integer.parseInt(req.getParameter("delta")); // 正数增加，负数减少
+        String msg = couponService.adjustStock(couponId, delta);
+        Map<String, Object> result;
+        if (msg.contains("成功")) {
+            result = Result.ok(msg, null);
+        } else {
+            result = Result.fail(msg);
+        }
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
 }
