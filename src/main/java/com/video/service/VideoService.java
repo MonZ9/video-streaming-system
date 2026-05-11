@@ -6,6 +6,7 @@ import com.video.annotation.Inject;
 import com.video.dao.VideoDao;
 import com.video.model.User;
 import com.video.model.Video;
+import com.video.mq.RocketMQProducer;
 import com.video.util.DbUtil;
 import com.video.util.LogUtil;
 import com.video.util.RedisUtil;
@@ -34,18 +35,23 @@ public class VideoService {
     public boolean addVideo(Video video) {
         boolean success = videoDao.save(video);
         if (success) {
-            // 补全作者名（数据库不存，但推送时需要）
             User author = userService.getUserById(video.getUserId());
             if (author != null) {
                 video.setAuthorName(author.getUsername());
             }
-            // 原有缓存逻辑
             RedisUtil.setex("video:" + video.getId(), 300, JSON.toJSONString(video));
             RedisUtil.del("video:list");
             LogUtil.info("新增视频并写入Redis缓存: " + video.getTitle());
 
-            // 推送到粉丝的 Redis 收件箱
             feedPushService.pushVideo(video);
+
+            // 发送 RocketMQ 消息 (新增)
+            try {
+                String msgJson = JSON.toJSONString(video);
+                RocketMQProducer.send("feed-update", "new-content", msgJson);
+            } catch (Exception e) {
+                LogUtil.error("发送 RocketMQ 消息失败", e);
+            }
         } else {
             LogUtil.warn("新增视频失败: " + video.getTitle());
         }

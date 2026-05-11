@@ -1,6 +1,7 @@
 package com.video.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.video.annotation.RateLimit;
 import com.video.core.BeanFactory;
 import com.video.exception.AuthException;
 import com.video.exception.BusinessException;
@@ -8,7 +9,6 @@ import com.video.model.Coupon;
 import com.video.model.User;
 import com.video.service.CouponService;
 import com.video.util.AuthUtil;
-import com.video.util.RedisUtil;
 import com.video.util.Result;
 
 import javax.servlet.http.HttpServletRequest;
@@ -21,22 +21,15 @@ public class CouponController {
 
     private CouponService couponService = BeanFactory.getBean(CouponService.class);
 
-    // 抢购接口 /api/coupon/grab?couponId=xxx （带限流防刷）
+    /**
+     * 抢购接口，应用方法级限流：每秒最多3次/用户IP（可改为用户ID）
+     */
+    @RateLimit(threshold = 3, timeout = 1)
     public void grab(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
         if (user == null) throw new AuthException();
         int couponId = Integer.parseInt(req.getParameter("couponId"));
-
-        // ================= 限流防刷（每秒最多3次） =================
-        String rateKey = "rate:coupon:user:" + user.getId();
-        Long count = RedisUtil.incr(rateKey);
-        if (count == 1) {
-            RedisUtil.expire(rateKey, 1);
-        }
-        if (count > 3) {
-            throw new BusinessException(429, "请求过于频繁，请稍后再试");
-        }
 
         String msg = couponService.grab(couponId, user.getId());
         Map<String, Object> result;
@@ -53,12 +46,12 @@ public class CouponController {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
         if (user == null) throw new AuthException();
-        // 简单起见，这里假设只有管理员可预热，实际应加权限校验
         int couponId = Integer.parseInt(req.getParameter("couponId"));
         couponService.preheat(couponId);
         resp.getWriter().write(JSON.toJSONString(Result.ok("预热完成", null)));
     }
 
+    // 优惠券列表（普通用户/管理员均可查看）
     public void list(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
@@ -70,6 +63,7 @@ public class CouponController {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
+    // 设置结束时间并开始活动
     public void preheatAndSetTime(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
@@ -87,6 +81,7 @@ public class CouponController {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
+    // 创建新优惠券
     public void create(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
@@ -94,12 +89,10 @@ public class CouponController {
 
         String title = req.getParameter("title");
         int stock = Integer.parseInt(req.getParameter("stock"));
-        // 其他参数可选，此处简化
         Coupon coupon = new Coupon();
         coupon.setTitle(title);
         coupon.setStock(stock);
         coupon.setRemain(stock);
-        // 默认未开始，后续通过设置时间激活
         coupon.setStartTime(new Timestamp(System.currentTimeMillis()));
         coupon.setEndTime(new Timestamp(System.currentTimeMillis() + 86400000L)); // 一天后
         coupon.setStatus(1);
@@ -108,6 +101,7 @@ public class CouponController {
         resp.getWriter().write(JSON.toJSONString(Result.ok("创建成功，ID=" + coupon.getId(), null)));
     }
 
+    // 结束活动
     public void end(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
@@ -117,6 +111,7 @@ public class CouponController {
         resp.getWriter().write(JSON.toJSONString(Result.ok("活动已结束", null)));
     }
 
+    // 动态调整库存
     public void adjustStock(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         resp.setContentType("application/json;charset=UTF-8");
         User user = AuthUtil.getLoginUser(req);
@@ -132,5 +127,4 @@ public class CouponController {
         }
         resp.getWriter().write(JSON.toJSONString(result));
     }
-
 }

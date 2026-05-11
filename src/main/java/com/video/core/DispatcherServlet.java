@@ -1,8 +1,11 @@
 package com.video.core;
 
 import com.alibaba.fastjson.JSON;
+import com.video.annotation.RateLimit;
 import com.video.exception.BusinessException;
+import com.video.mq.RocketMQConsumer;
 import com.video.util.LogUtil;
+import com.video.util.RedisUtil;
 import com.video.util.Result;
 
 import javax.servlet.ServletException;
@@ -21,10 +24,18 @@ public class DispatcherServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        // 扫描 service、dao 包，创建所有带 @Bean 的类的实例
         BeanFactory.init();
-        // Controller 暂不纳入容器，仍然通过反射创建
         LogUtil.info("IoC 容器初始化完成");
+
+        // 异步启动 RocketMQ 消费者
+        new Thread(() -> {
+            try {
+                RocketMQConsumer.start();
+                LogUtil.info("RocketMQ 消费者已启动");
+            } catch (Exception e) {
+                LogUtil.error("RocketMQ 消费者启动失败", e);
+            }
+        }).start();
     }
 
     @Override
@@ -76,6 +87,19 @@ public class DispatcherServlet extends HttpServlet {
                     HttpServletRequest.class,
                     HttpServletResponse.class
             );
+
+            // ================= 限流拦截（基于 @RateLimit 注解） =================
+            RateLimit rateLimit = method.getAnnotation(RateLimit.class);
+            if (rateLimit != null) {
+                String rateKey = "rate:" + controllerName + "." + methodName + ":" + req.getRemoteAddr();
+                Long count = RedisUtil.incr(rateKey);
+                if (count == 1) {
+                    RedisUtil.expire(rateKey, rateLimit.timeout());
+                }
+                if (count > rateLimit.threshold()) {
+                    throw new BusinessException(429, "请求过于频繁，请稍后再试");
+                }
+            }
 
             // 执行目标 Controller 方法
             method.invoke(controller, req, resp);

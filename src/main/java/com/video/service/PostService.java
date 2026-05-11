@@ -1,10 +1,13 @@
 package com.video.service;
 
+import com.alibaba.fastjson.JSON;
 import com.video.annotation.Bean;
 import com.video.annotation.Inject;
 import com.video.dao.PostDao;
 import com.video.model.Post;
 import com.video.model.User;
+import com.video.mq.RocketMQProducer;
+import com.video.util.LogUtil;
 
 import java.util.List;
 
@@ -27,16 +30,22 @@ public class PostService {
         Post post = new Post();
         post.setUserId(userId);
         post.setContent(content.trim());
-        boolean success = postDao.savePost(post);  // savePost 内部会设置 post.id
+        boolean success = postDao.savePost(post);
 
         if (success) {
-            // 补全作者名
             User author = userService.getUserById(userId);
             if (author != null) {
                 post.setAuthorName(author.getUsername());
             }
-            // 推送到粉丝
             feedPushService.pushPost(post);
+
+            // 发送 RocketMQ 消息 (新增)
+            try {
+                String msgJson = JSON.toJSONString(post);
+                RocketMQProducer.send("feed-update", "new-content", msgJson);
+            } catch (Exception e) {
+                LogUtil.error("发送 RocketMQ 消息失败", e);
+            }
         }
         return success;
     }
